@@ -52,7 +52,19 @@ const defaultSlides = [
   return (
     <section className="relative w-full bg-primary">
       <div className="relative h-[48vh] sm:h-[60vh] md:h-[70vh] overflow-hidden">
-        <div className="absolute inset-0">
+        {/* Background image */}
+        <Image
+          src={current.src}
+          alt={current.title || "Slide"}
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center"
+        />
+        {/* Overlay */}
+        <div className="absolute inset-0 bg-black/45" />
+
+        <div className="absolute inset-0 z-10">
           <div className="mx-auto max-w-6xl h-full px-4 sm:px-6 w-full flex items-center">
             <div className="grid grid-cols-1 md:grid-cols-2 items-center gap-6 w-full h-full">
               <div className="md:pr-6">
@@ -71,30 +83,21 @@ const defaultSlides = [
                   <a href="#contact" className="rounded border border-white/30 text-white px-4 py-2 text-[14px] sm:text-[15px] hover:bg-white/10">Contact Us</a>
                 </div>
               </div>
-              <div className="relative w-full h-full">
-                <Image
-                  src={current.src}
-                  alt={current.title || "Slide"}
-                  fill
-                  priority
-                  sizes="50vw"
-                  className="object-contain object-center opacity-95"
-                />
-              </div>
+              <div className="hidden md:block" />
             </div>
           </div>
         </div>
 
         {total > 1 && (
           <>
-            <button aria-label="Previous" onClick={() => go("prev")} className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white hover:bg-black/60">
+            <button aria-label="Previous" onClick={() => go("prev")} className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white hover:bg-black/60 z-20">
               <ChevronLeft size={22} />
             </button>
-            <button aria-label="Next" onClick={() => go("next")} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white hover:bg-black/60">
+            <button aria-label="Next" onClick={() => go("next")} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white hover:bg-black/60 z-20">
               <ChevronRight size={22} />
             </button>
 
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
               {validSlides.map((_, i) => (
                 <span key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === index ? "w-6 bg-[color:var(--secondary)]" : "w-3 bg-white/60"}`} />
               ))}

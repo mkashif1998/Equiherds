@@ -1,0 +1,125 @@
+"use client";
+import Image from "next/image";
+
+// Star Rating Component
+const StarRating = ({ rating, maxRating = 5 }) => {
+  return (
+    <div className="flex items-center">
+      {[...Array(maxRating)].map((_, index) => (
+        <svg
+          key={index}
+          className={`w-4 h-4 ${
+            index < rating ? 'text-yellow-400' : 'text-gray-300'
+          }`}
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+        </svg>
+      ))}
+      <span className="ml-2 text-sm text-gray-600">({rating})</span>
+    </div>
+  );
+};
+
+const Coach = () => {
+  const trainers = [
+    {
+      id: 1,
+      name: "Sarah Johnson",
+      image: "/trainer/1.jpg",
+      price: "$150",
+      rating: 4.8,
+      experience: "8 years",
+      specialization: "Dressage Training"
+    },
+    {
+      id: 2,
+      name: "Michael Chen",
+      image: "/trainer/2.jpg",
+      price: "$180",
+      rating: 4.9,
+      experience: "12 years",
+      specialization: "Jumping & Cross Country"
+    },
+    {
+      id: 3,
+      name: "Emma Williams",
+      image: "/trainer/3.jpg",
+      price: "$120",
+      rating: 4.7,
+      experience: "6 years",
+      specialization: "Beginner Lessons"
+    },
+    {
+      id: 4,
+      name: "David Rodriguez",
+      image: "/trainer/4.jpg",
+      price: "$200",
+      rating: 5.0,
+      experience: "15 years",
+      specialization: "Advanced Training"
+    }
+  ];
+
+  return (
+    <section className="py-16 px-4 sm:px-8 lg:px-16 bg-gray-50">
+      <div className="max-w-7xl mx-auto">
+        <div className="items-center justify-items-center p-8 text-center">
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">Our Expert Trainers</h2>
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-16 h-0.5 bg-orange-300"></div>
+            <div className="w-16 h-2 bg-secondary mx-2"></div>
+            <div className="w-16 h-0.5 bg-orange-300"></div>
+          </div>
+          <p className="text-gray-600 text-lg">Meet our experienced and certified horse riding instructors</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+          {trainers.map((trainer) => (
+            <div key={trainer.id} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+              {/* Trainer Image */}
+              <div className="relative h-64 overflow-hidden">
+                <Image
+                  src={trainer.image}
+                  alt={trainer.name}
+                  width={300}
+                  height={256}
+                  className="object-cover w-full h-full hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute top-4 right-4 bg-white bg-opacity-90 rounded-full px-3 py-1">
+                  <span className="text-sm font-semibold text-gray-800">{trainer.price}/hr</span>
+                </div>
+              </div>
+              
+              {/* Trainer Info */}
+              <div className="p-6">
+                <h3 className="text-xl font-bold text-gray-800 mb-2">{trainer.name}</h3>
+                <p className="text-gray-600 text-sm mb-3">{trainer.specialization}</p>
+                <p className="text-gray-500 text-sm mb-4">Experience: {trainer.experience}</p>
+                
+                {/* Rating */}
+                <div className="mb-4">
+                  <StarRating rating={trainer.rating} />
+                </div>
+                
+                {/* Contact Button */}
+                <button className="w-full bg-secondary text-white py-2 px-4 rounded-md hover:bg-gray-800 transition-colors duration-200 font-medium">
+                  Book Session
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="text-center">
+          <button className="bg-secondary text-white px-8 py-3 rounded-md hover:bg-gray-900 transition-colors duration-200 font-medium text-lg cursor-pointer">
+            View All
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default Coach;

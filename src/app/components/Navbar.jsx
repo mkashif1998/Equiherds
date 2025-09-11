@@ -9,8 +9,8 @@ import { Home, Briefcase, Info, Phone, Newspaper, LogIn, Menu, X } from "lucide-
 const navItems = [
   { href: "/", label: "Home", Icon: Home },
   { href: "/services", label: "Services", Icon: Briefcase },
-  { href: "/about", label: "About us", Icon: Info },
-  { href: "/contact", label: "Contact us", Icon: Phone },
+  { href: "/aboutus", label: "About us", Icon: Info },
+  { href: "/contactus", label: "Contact us", Icon: Phone },
   { href: "/news", label: "News", Icon: Newspaper },
   { href: "/login", label: "Login", Icon: LogIn },
 ];
