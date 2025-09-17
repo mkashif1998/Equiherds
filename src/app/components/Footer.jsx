@@ -17,11 +17,11 @@ const footerItems = [
 export default function Footer() {
   const pathname = usePathname();
   return (
-    <footer className="w-full border-t border-white/10 mt-10 bg-black text-white">
+    <footer className="w-full border-t border-white/10 mt-10 bg-primary text-white">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 text-[15px]">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <Image src="/logo.png" alt="Logo" width={110} height={110} />
+            <Image src="/logo.jpeg" className="gap-2 p-2 bg-white rounded" alt="Logo" width={130} height={130} />
             <p className="opacity-70 leading-relaxed max-w-xs">Building modern herd management experiences with care and technology.</p>
           </div>
 

@@ -51,7 +51,7 @@ const defaultSlides = [
 
   return (
     <section className="relative w-full bg-primary">
-      <div className="relative h-[48vh] sm:h-[60vh] md:h-[70vh] overflow-hidden">
+      <div className="relative h-[48vh] sm:h-[60vh] md:h-[86vh] overflow-hidden">
         {/* Background image */}
         <Image
           src={current.src}

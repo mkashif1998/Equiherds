@@ -6,9 +6,9 @@ export default function Content() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
         <div className="text-brand">
           <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-4">Our Mission</h2>
-          <div className="flex items-center mb-4">
+          <div className="flex items-center  mb-4">
             <div className="w-16 h-0.5 bg-orange-300"></div>
-            <div className="w-16 h-2 bg-secondary mx-0"></div>
+            <div className="w-16 h-2 bg-secondary mx-2"></div>
             <div className="w-16 h-0.5 bg-orange-300"></div>
           </div>
           <p className="opacity-80 text-gray-600">

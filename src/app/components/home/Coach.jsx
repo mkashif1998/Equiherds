@@ -27,7 +27,7 @@ const Coach = () => {
     {
       id: 1,
       name: "Sarah Johnson",
-      image: "/trainer/1.jpg",
+      image: "/trainer/5.jpg",
       price: "$150",
       rating: 4.8,
       experience: "8 years",
@@ -66,7 +66,7 @@ const Coach = () => {
     <section className="py-16 px-4 sm:px-8 lg:px-16 bg-gray-50">
       <div className="max-w-7xl mx-auto">
         <div className="items-center justify-items-center p-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">Our Expert Trainers</h2>
+          <h2 className="text-2xl font-semibold primary mb-4">Our Expert Trainers</h2>
           <div className="flex items-center justify-center mb-4">
             <div className="w-16 h-0.5 bg-orange-300"></div>
             <div className="w-16 h-2 bg-secondary mx-2"></div>
@@ -104,7 +104,7 @@ const Coach = () => {
                 </div>
                 
                 {/* Contact Button */}
-                <button className="w-full bg-secondary text-white py-2 px-4 rounded-md hover:bg-gray-800 transition-colors duration-200 font-medium">
+                <button className="w-full bg-secondary text-white py-2 px-4 rounded-md hover:bg-gray-800 transition-colors duration-200 font-medium cursor-pointer">
                   Book Session
                 </button>
               </div>

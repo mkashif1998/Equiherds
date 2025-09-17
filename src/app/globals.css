@@ -4,20 +4,15 @@
   --background: #ffffff;
   --foreground: #171717;
   /* Update this to match your logo's primary color */
-  --primary: linear-gradient(
-    180deg,
-    #50acef 0%,   /* light at the top */
-    #4a7db7 20%, 
-    #3264ad 50%, 
-    #1e3487 100%  /* dark at the bottom */
-  );
+  --primary:  #0a2d85;
+  --primary-gradient: linear-gradient(to bottom, #3d91dc, #0a2d85);
   --secondary: #ed8a3c;
 }
 .primary {
   color: var(--primary);
 }
 .bg-primary {
-  background-color: var(--primary);
+  background: linear-gradient(to bottom, #3d91dc, #0a2d85);
 }
 .bg-secondary {
   background-color: var(--secondary);

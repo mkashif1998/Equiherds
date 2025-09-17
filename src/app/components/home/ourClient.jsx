@@ -76,10 +76,10 @@ export default function OurClient() {
         <div className="bg-white">
             <section className="mx-auto max-w-6xl px-4 py-16">
                 <div className="text-brand text-center mb-10">
-                    <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">What our clients say</h2>
-                    <div className="flex items-center justify-center mt-4">
+                    <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-4">What our clients say</h2>
+                     <div className="flex items-center justify-center mb-4">
                         <div className="w-16 h-0.5 bg-orange-300"></div>
-                        <div className="w-16 h-2 bg-secondary mx-0"></div>
+                        <div className="w-16 h-2 bg-secondary mx-2"></div>
                         <div className="w-16 h-0.5 bg-orange-300"></div>
                     </div>
                 </div>
