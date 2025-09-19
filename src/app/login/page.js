@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { toast } from "react-hot-toast";
+import { postRequest } from "@/service";
 import TopSection from "../components/topSection";
 
 export default function LoginPage() {
@@ -36,30 +38,55 @@ export default function LoginPage() {
       activeTab === tab ? "bg-primary text-black" : "bg-transparent border border-brand/30 text-brand"
     }`;
 
-  function handleLoginSubmit(e) {
+  async function handleLoginSubmit(e) {
     e.preventDefault();
-    // TODO: Hook up to your auth API
-    console.log("Login", { email: loginEmail });
+    try {
+      const res = await postRequest("/api/login", {
+        email: loginEmail,
+        password: loginPassword,
+      });
+      if (res?.message === "Login successful") {
+        if (res?.token) {
+          localStorage.setItem("token", res.token);
+        }
+        toast.success(res?.message || "Logged in successfully");
+        window.location.href = "/profile";
+      } else {
+        toast.error(res?.message || "Login failed");
+      }
+    } catch (err) {
+      toast.error(err?.message || "Login failed");
+    }
   }
 
-  function handleRegisterSubmit(e) {
+  async function handleRegisterSubmit(e) {
     e.preventDefault();
     if (password !== confirmPassword) {
-      alert("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
-    const payload = {
-      firstName,
-      lastName,
-      email: registerEmail,
-      accountType,
-      phoneNumber,
-      companyName: isSeller ? companyName : undefined,
-      companyInfo: isSeller ? companyInfo : undefined,
-      // brandImage would typically be handled via multipart/form-data
-    };
-    console.log("Register", payload, brandImage);
-    // TODO: Send to your register API
+    try {
+      const mappedAccountType = accountType.toLowerCase(); 
+      const payload = {
+        firstName,
+        lastName,
+        email: registerEmail,
+        accountType: mappedAccountType,
+        phoneNumber,
+        companyName: isSeller ? companyName : undefined,
+        companyInfo: isSeller ? companyInfo : undefined,
+        password,
+      };
+      const res = await postRequest("/api/users", payload);
+      if (res && res.user) {
+        toast.success(res.message || "User created successfully");
+        setActiveTab("login");
+      } else {
+        toast.error(res?.message || "Failed to create account");
+      }
+    } catch (err) {
+      toast.error(err.message || "Failed to create account");
+    }
   }
 
   return (
@@ -83,11 +110,25 @@ export default function LoginPage() {
           </div>
 
           <div className="mx-auto w-full max-w-xl">
-            <div className="grid grid-cols-2 gap-2 mb-6">
-              <button type="button" className={tabClass("login")} onClick={() => setActiveTab("login")}>
+            <div className="grid grid-cols-2 gap-2 mb-6 ">
+              <button
+                type="button"
+                className={
+                  tabClass("login") +
+                  (activeTab === "login" ? " text-white" : "")
+                }
+                onClick={() => setActiveTab("login")}
+              >
                 Login
               </button>
-              <button type="button" className={tabClass("register")} onClick={() => setActiveTab("register")}>
+              <button
+                type="button"
+                className={
+                  tabClass("register") +
+                  (activeTab === "register" ? " text-white" : "")
+                }
+                onClick={() => setActiveTab("register")}
+              >
                 Register
               </button>
             </div>
@@ -134,7 +175,7 @@ export default function LoginPage() {
                   </label>
                   <a href="#" className="underline">Forgot password?</a>
                 </div>
-                <button type="submit" className="bg-primary text-black rounded px-4 py-2 font-medium">Login</button>
+                <button type="submit" className="bg-primary text-white rounded px-4 py-2 font-medium">Login</button>
               </form>
             ) : (
               <form className="grid gap-4 rounded-xl border border-white/10 bg-white text-black p-6" onSubmit={handleRegisterSubmit}>
@@ -222,7 +263,6 @@ export default function LoginPage() {
                         accept="image/*"
                         className="file:mr-4 file:rounded file:border-0 file:bg-primary file:text-black file:px-4 file:py-2 file:font-medium hover:file:opacity-90"
                         onChange={(e) => setBrandImage(e.target.files?.[0] ?? null)}
-                        required={isSeller}
                       />
                     </div>
                     <div className="grid gap-1">
@@ -286,7 +326,7 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <button type="submit" className="bg-primary text-black rounded px-4 py-2 font-medium">Create account</button>
+                <button type="submit" className="bg-primary text-white rounded px-4 py-2 font-medium">Create account</button>
         </form>
             )}
           </div>

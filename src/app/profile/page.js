@@ -7,10 +7,20 @@ import AddServices from "./AddServices";
 const tabs = [
   { key: "profile", label: "My Profile" },
   { key: "services", label: "Add Services" },
+  { key: "logout", label: "Logout" },
 ];
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("profile");
+
+  const handleLogout = () => {
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+      }
+    } catch {}
+    window.location.href = "/login";
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
@@ -28,7 +38,7 @@ export default function ProfilePage() {
                       ? "[color:var(--primary)] bg-[color:var(--primary)]/10"
                       : "text-brand hover:bg-[color:var(--primary)]/5"
                   }`}
-                  onClick={() => setActiveTab(t.key)}
+                  onClick={() => (t.key === "logout" ? handleLogout() : setActiveTab(t.key))}
                 >
                   {t.label}
                 </button>

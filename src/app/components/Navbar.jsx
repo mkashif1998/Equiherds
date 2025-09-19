@@ -2,22 +2,41 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Home, Briefcase, Info, Phone, Newspaper, LogIn, Menu, X } from "lucide-react";
+import { Home, Briefcase, Info, Phone, Newspaper, LogIn, Menu, X, User } from "lucide-react";
 
-const navItems = [
+const baseNavItems = [
   { href: "/", label: "Home", Icon: Home },
   { href: "/services", label: "Services", Icon: Briefcase },
   { href: "/aboutus", label: "About us", Icon: Info },
   { href: "/contactus", label: "Contact us", Icon: Phone },
   { href: "/news", label: "News", Icon: Newspaper },
-  { href: "/login", label: "Login", Icon: LogIn },
 ];
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const pathname = usePathname();
+
+  useEffect(() => {
+    const checkToken = () => {
+      try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        setIsAuthenticated(Boolean(token));
+      } catch {
+        setIsAuthenticated(false);
+      }
+    };
+    checkToken();
+
+    // Sync across tabs
+    const onStorage = (e) => {
+      if (e.key === "token") checkToken();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   return (
     <header className="w-full border-b border-white/10 bg-primary sticky top-0 z-40">
@@ -36,7 +55,7 @@ export default function Navbar() {
         </button>
 
         <nav className="hidden sm:flex items-center gap-6 text-[15px]">
-          {navItems.map(({ href, label, Icon }) => {
+          {[...baseNavItems, isAuthenticated ? { href: "/profile", label: "Profile", Icon: User } : { href: "/login", label: "Login", Icon: LogIn }].map(({ href, label, Icon }) => {
             const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
             return (
               <Link
@@ -74,7 +93,7 @@ export default function Navbar() {
             </button>
           </div>
           <nav className="px-4 py-3 grid grid-cols-1 gap-2 text-[15px]">
-            {navItems.map(({ href, label, Icon }) => {
+            {[...baseNavItems, isAuthenticated ? { href: "/profile", label: "Profile", Icon: User } : { href: "/login", label: "Login", Icon: LogIn }].map(({ href, label, Icon }) => {
               const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
               return (
                 <Link
@@ -96,5 +115,7 @@ export default function Navbar() {
     </header>
   );
 }
+
+
 
 
