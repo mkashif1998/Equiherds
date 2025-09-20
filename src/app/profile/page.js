@@ -2,11 +2,19 @@
 
 import { useState } from "react";
 import MyProfile from "./MyProfile";
-import AddServices from "./AddServices";
+import Stables from "./Stables";
+import Subscription from "./Subscription";
+import Training from "./Training";
+import MyServices from "./MyServices";
+import Client from "./Client";
 
 const tabs = [
   { key: "profile", label: "My Profile" },
-  { key: "services", label: "Add Services" },
+  { key: "subscription", label: "Subscription" },
+  { key: "training", label: "Training" },
+  { key: "stables", label: "Stables" },
+  { key: "myServices", label: "My Services" },
+  { key: "client", label: "Client" },
   { key: "logout", label: "Logout" },
 ];
 
@@ -23,8 +31,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
-      <h1 className="text-3xl font-semibold text-brand mb-6">Profile</h1>
+    <div className="mx-auto max-w-8xl px-4 py-10">
       <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
         <aside className="md:h-[calc(100dvh-200px)] md:sticky md:top-24 p-4 rounded border border-[color:var(--primary)] bg-white">
           <nav className="grid gap-2">
@@ -35,7 +42,7 @@ export default function ProfilePage() {
                   key={t.key}
                   className={`text-left px-3 py-2 rounded font-medium transition-colors border border-[color:var(--primary)] ${
                     isActive
-                      ? "[color:var(--primary)] bg-[color:var(--primary)]/10"
+                      ? "!text-white bg-[color:var(--primary)]"
                       : "text-brand hover:bg-[color:var(--primary)]/5"
                   }`}
                   onClick={() => (t.key === "logout" ? handleLogout() : setActiveTab(t.key))}
@@ -49,7 +56,11 @@ export default function ProfilePage() {
 
         <section className="min-h-[320px] p-4 rounded border border-[color:var(--primary)] bg-white">
           {activeTab === "profile" && <MyProfile />}
-          {activeTab === "services" && <AddServices />}
+          {activeTab === "subscription" && <Subscription />}
+          {activeTab === "training" && <Training />}
+          {activeTab === "stables" && <Stables />}
+          {activeTab === "myServices" && <MyServices />}
+          {activeTab === "client" && <Client />}
         </section>
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
-import { postRequest } from "@/service";
+import { postRequest, uploadFile } from "@/service";
 import TopSection from "../components/topSection";
 
 export default function LoginPage() {
@@ -35,8 +35,13 @@ export default function LoginPage() {
   const labelClass = "text-sm";
   const tabClass = (tab) =>
     `w-full px-4 py-2 text-center rounded ${
-      activeTab === tab ? "bg-primary text-black" : "bg-transparent border border-brand/30 text-brand"
+      activeTab === tab ? "bg-primary !text-white" : "bg-transparent border border-brand/30 text-brand"
     }`;
+
+  function handleBrandImageChange(e) {
+    const file = e.target.files?.[0] ?? null;
+    setBrandImage(file);
+  }
 
   async function handleLoginSubmit(e) {
     e.preventDefault();
@@ -66,7 +71,22 @@ export default function LoginPage() {
       return;
     }
     try {
-      const mappedAccountType = accountType.toLowerCase(); 
+      const mappedAccountType = accountType.toLowerCase();
+
+      let brandImageUrl;
+      if (isSeller && brandImage) {
+        if (typeof brandImage === 'string') {
+          brandImageUrl = brandImage;
+        } else {
+          try {
+            brandImageUrl = await uploadFile(brandImage);
+          } catch (err) {
+            toast.error(err?.message || "Image upload failed");
+            return;
+          }
+        }
+      }
+
       const payload = {
         firstName,
         lastName,
@@ -74,6 +94,7 @@ export default function LoginPage() {
         accountType: mappedAccountType,
         phoneNumber,
         companyName: isSeller ? companyName : undefined,
+        brandImage: isSeller ? brandImageUrl || undefined : undefined,
         companyInfo: isSeller ? companyInfo : undefined,
         password,
       };
@@ -175,7 +196,7 @@ export default function LoginPage() {
                   </label>
                   <a href="#" className="underline">Forgot password?</a>
                 </div>
-                <button type="submit" className="bg-primary text-white rounded px-4 py-2 font-medium">Login</button>
+                <button type="submit" className="bg-primary !text-white rounded px-4 py-2 font-medium">Login</button>
               </form>
             ) : (
               <form className="grid gap-4 rounded-xl border border-white/10 bg-white text-black p-6" onSubmit={handleRegisterSubmit}>
@@ -262,8 +283,11 @@ export default function LoginPage() {
                         type="file"
                         accept="image/*"
                         className="file:mr-4 file:rounded file:border-0 file:bg-primary file:text-black file:px-4 file:py-2 file:font-medium hover:file:opacity-90"
-                        onChange={(e) => setBrandImage(e.target.files?.[0] ?? null)}
+                        onChange={handleBrandImageChange}
                       />
+                      {brandImage && (
+                        <span className="text-xs text-green-700 break-all">{typeof brandImage === 'string' ? brandImage : brandImage.name}</span>
+                      )}
                     </div>
                     <div className="grid gap-1">
                       <label className={labelClass} htmlFor="company-info">Company info</label>
@@ -326,7 +350,7 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <button type="submit" className="bg-primary text-white rounded px-4 py-2 font-medium">Create account</button>
+                <button type="submit" className="bg-primary !text-white rounded px-4 py-2 font-medium">Create account</button>
         </form>
             )}
           </div>

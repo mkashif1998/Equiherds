@@ -59,28 +59,33 @@ export const deleteRequest = async (url) => {
     return data;
 }
 
+
+// Upload a single file to the external documents-upload API and return the first URL string
 export const uploadFile = async (file) => {
-    const authToken = getToken();
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-        const response = await fetch(`${baseUrl}/api/upload`, {
-            method: 'POST',
-            headers: {
-                "Authorization": `Bearer ${authToken}`
-            },
-            body: formData,
-        });
-
-        if (!response.ok) {
-            throw new Error('Upload failed');
-        }
-
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error('Upload error:', error);
-        throw error;
+    if (!file) {
+        throw new Error("No file provided");
     }
-};   
+
+    const formData = new FormData();
+    // Most document upload APIs accept 'files' for multiple; this will work for single too
+    formData.append('files', file);
+
+    const response = await fetch('https://lms-api.wiserbee.ca/api/Document/documents-upload', {
+        method: 'POST',
+        body: formData,
+    });
+
+    if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(text || `Upload failed with status ${response.status}`);
+    }
+
+    const result = await response.json();
+    // Expected response: ["https://.../file.png"]
+    if (Array.isArray(result) && result.length > 0 && typeof result[0] === 'string') {
+        return result[0];
+    }
+
+    throw new Error("Unexpected upload response");
+}
+
