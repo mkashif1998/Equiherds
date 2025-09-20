@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {Edit, Trash} from "lucide-react";
+import { Edit, Trash, Plus, X } from "lucide-react";
 
 const dummyStables = [
   {
@@ -10,9 +10,7 @@ const dummyStables = [
     details: "Spacious stable with modern amenities and 24/7 care.",
     price: 25000,
     rating: 4.5,
-    images: [
-      "/trainer/5.jpg"
-    ],
+    images: ["/trainer/5.jpg"],
   },
   {
     id: "2",
@@ -20,9 +18,7 @@ const dummyStables = [
     details: "Well-ventilated stable with attached paddock.",
     price: 18000,
     rating: 4.0,
-    images: [
-      "/trainer/1.jpg",
-    ],
+    images: ["/trainer/1.jpg"],
   },
 ];
 
@@ -44,7 +40,10 @@ function StarRating({ rating }) {
               <stop offset="50%" stopColor="transparent" stopOpacity="1" />
             </linearGradient>
           </defs>
-          <path d="M10 15l-5.878 3.09 1.122-6.545L.488 6.91l6.561-.955L10 0l2.951 5.955 6.561.955-4.756 4.635 1.122 6.545z" fill="url(#half)" />
+          <path
+            d="M10 15l-5.878 3.09 1.122-6.545L.488 6.91l6.561-.955L10 0l2.951 5.955 6.561.955-4.756 4.635 1.122 6.545z"
+            fill="url(#half)"
+          />
         </svg>
       )}
       <span className="ml-1 text-xs text-brand/70">{rating.toFixed(1)}</span>
@@ -60,8 +59,14 @@ export default function Trainer() {
     details: "",
     price: "",
     images: [],
+    slots: [],
   });
   const [imagePreviews, setImagePreviews] = useState([]);
+  const [slotInput, setSlotInput] = useState({
+    day: "",
+    startTime: "",
+    endTime: "",
+  });
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -84,10 +89,12 @@ export default function Trainer() {
       price: Number(form.price),
       rating: 0,
       images: imagePreviews,
+      slots: form.slots,
     };
     setStables((prev) => [newStable, ...prev]);
-    setForm({ title: "", details: "", price: "", images: [] });
+    setForm({ title: "", details: "", price: "", images: [], slots: [] });
     setImagePreviews([]);
+    setSlotInput({ day: "", startTime: "", endTime: "" });
     setShowModal(false);
   };
 
@@ -102,10 +109,34 @@ export default function Trainer() {
       details: stable.details,
       price: stable.price,
       images: [],
+      slots: stable.slots || [],
     });
     setImagePreviews(stable.images);
+    setSlotInput({ day: "", startTime: "", endTime: "" });
     setStables((prev) => prev.filter((s) => s.id !== stable.id));
     setShowModal(true);
+  };
+
+  // Slot input handlers
+  const handleSlotInputChange = (e) => {
+    const { name, value } = e.target;
+    setSlotInput((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddSlot = () => {
+    if (!slotInput.day || !slotInput.startTime || !slotInput.endTime) return;
+    setForm((prev) => ({
+      ...prev,
+      slots: [...(prev.slots || []), { ...slotInput }],
+    }));
+    setSlotInput({ day: "", startTime: "", endTime: "" });
+  };
+
+  const handleDeleteSlot = (idx) => {
+    setForm((prev) => ({
+      ...prev,
+      slots: prev.slots.filter((_, i) => i !== idx),
+    }));
   };
 
   return (
@@ -125,7 +156,10 @@ export default function Trainer() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {stables.map((stable) => (
-          <div key={stable.id} className="bg-white rounded-lg border border-[color:var(--primary)] shadow-sm p-4 relative">
+          <div
+            key={stable.id}
+            className="bg-white rounded-lg border border-[color:var(--primary)] shadow-sm p-4 relative"
+          >
             <div className="relative w-full h-40 mb-3 rounded overflow-hidden bg-gray-100">
               {stable.images && stable.images.length > 0 ? (
                 <img
@@ -134,7 +168,9 @@ export default function Trainer() {
                   className="object-cover w-full h-full"
                 />
               ) : (
-                <div className="flex items-center justify-center w-full h-full text-brand/40">No Image</div>
+                <div className="flex items-center justify-center w-full h-full text-brand/40">
+                  No Image
+                </div>
               )}
               <div className="absolute top-2 right-2 flex gap-2">
                 <button
@@ -161,6 +197,18 @@ export default function Trainer() {
               </span>
               <StarRating rating={stable.rating} />
             </div>
+            {stable.slots && stable.slots.length > 0 && (
+              <div className="mt-2">
+                <span className="text-xs font-semibold text-brand/70">Slots:</span>
+                <ul className="text-xs text-brand/80 mt-1 space-y-1">
+                  {stable.slots.map((slot, idx) => (
+                    <li key={idx}>
+                      {slot.day} - {slot.startTime} to {slot.endTime}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {stable.images && stable.images.length > 1 && (
               <div className="flex gap-1 mt-2">
                 {stable.images.slice(1, 4).map((img, idx) => (
@@ -185,8 +233,9 @@ export default function Trainer() {
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={() => {
                 setShowModal(false);
-                setForm({ title: "", details: "", price: "", images: [] });
+                setForm({ title: "", details: "", price: "", images: [], slots: [] });
                 setImagePreviews([]);
+                setSlotInput({ day: "", startTime: "", endTime: "" });
               }}
               title="Close"
             >
@@ -219,7 +268,7 @@ export default function Trainer() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-brand mb-1">Price</label>
+                <label className="block text-sm font-medium text-brand mb-1">Price/hour</label>
                 <input
                   type="number"
                   name="price"
@@ -230,6 +279,71 @@ export default function Trainer() {
                   required
                 />
               </div>
+              {/* Slots Field */}
+              <div>
+                <label className="block text-sm font-medium text-brand mb-1">Slots</label>
+                <div className="flex gap-2 mb-2">
+                  <select
+                    name="day"
+                    value={slotInput.day}
+                    onChange={handleSlotInputChange}
+                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                  >
+                    <option value="">Day</option>
+                    <option value="Monday">Monday</option>
+                    <option value="Tuesday">Tuesday</option>
+                    <option value="Wednesday">Wednesday</option>
+                    <option value="Thursday">Thursday</option>
+                    <option value="Friday">Friday</option>
+                    <option value="Saturday">Saturday</option>
+                    <option value="Sunday">Sunday</option>
+                  </select>
+                  <input
+                    type="time"
+                    name="startTime"
+                    value={slotInput.startTime}
+                    onChange={handleSlotInputChange}
+                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                    placeholder="Start Time"
+                  />
+                  <input
+                    type="time"
+                    name="endTime"
+                    value={slotInput.endTime}
+                    onChange={handleSlotInputChange}
+                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                    placeholder="End Time"
+                  />
+                  <button
+                    type="button"
+                    className="p-1 rounded bg-[color:var(--primary)] text-white hover:bg-[color:var(--primary)]/90 flex items-center"
+                    onClick={handleAddSlot}
+                    title="Add Slot"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+                {form.slots && form.slots.length > 0 && (
+                  <ul className="space-y-1">
+                    {form.slots.map((slot, idx) => (
+                      <li key={idx} className="flex items-center gap-2 text-xs bg-gray-50 px-2 py-1 rounded">
+                        <span>
+                          {slot.day} - {slot.startTime} to {slot.endTime}
+                        </span>
+                        <button
+                          type="button"
+                          className="ml-1 text-red-500 hover:text-red-700"
+                          onClick={() => handleDeleteSlot(idx)}
+                          title="Delete Slot"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              {/* End Slots Field */}
               <div>
                 <label className="block text-sm font-medium text-brand mb-1">Images</label>
                 <input

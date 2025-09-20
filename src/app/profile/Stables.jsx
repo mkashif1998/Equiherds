@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {Edit, Trash} from "lucide-react";
+import { Edit, Trash, Plus, X } from "lucide-react";
 
 const dummyStables = [
   {
@@ -10,8 +10,10 @@ const dummyStables = [
     details: "Spacious stable with modern amenities and 24/7 care.",
     price: 25000,
     rating: 4.5,
-    images: [
-      "/product/4.jpg"
+    images: ["/product/4.jpg"],
+    priceRates: [
+      { price: 25000, rateType: "month" },
+      { price: 8000, rateType: "week" },
     ],
   },
   {
@@ -20,8 +22,10 @@ const dummyStables = [
     details: "Well-ventilated stable with attached paddock.",
     price: 18000,
     rating: 4.0,
-    images: [
-      "/product/1.jpg",
+    images: ["/product/1.jpg"],
+    priceRates: [
+      { price: 18000, rateType: "month" },
+      { price: 6000, rateType: "week" },
     ],
   },
 ];
@@ -58,10 +62,22 @@ export default function Stables() {
   const [form, setForm] = useState({
     title: "",
     details: "",
-    price: "",
     images: [],
+    slots: [],
+    priceRates: [],
   });
   const [imagePreviews, setImagePreviews] = useState([]);
+  const [slotInput, setSlotInput] = useState({
+    day: "",
+    startTime: "",
+    endTime: "",
+  });
+
+  // Price Rate State
+  const [priceRateInput, setPriceRateInput] = useState({
+    price: "",
+    rateType: "",
+  });
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -74,20 +90,91 @@ export default function Stables() {
     setImagePreviews(files.map((file) => URL.createObjectURL(file)));
   };
 
+  const handleSlotInputChange = (e) => {
+    const { name, value } = e.target;
+    setSlotInput((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddSlot = (e) => {
+    e.preventDefault();
+    if (!slotInput.day || !slotInput.startTime || !slotInput.endTime) return;
+    setForm((prev) => ({
+      ...prev,
+      slots: [
+        ...prev.slots,
+        {
+          day: slotInput.day,
+          startTime: slotInput.startTime,
+          endTime: slotInput.endTime,
+        },
+      ],
+    }));
+    setSlotInput({ day: "", startTime: "", endTime: "" });
+  };
+
+  const handleDeleteSlot = (idx) => {
+    setForm((prev) => ({
+      ...prev,
+      slots: prev.slots.filter((_, i) => i !== idx),
+    }));
+  };
+
+  // Price Rate Handlers
+  const handlePriceRateInputChange = (e) => {
+    const { name, value } = e.target;
+    setPriceRateInput((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddPriceRate = (e) => {
+    e.preventDefault();
+    if (!priceRateInput.price || !priceRateInput.rateType) return;
+    setForm((prev) => ({
+      ...prev,
+      priceRates: [
+        ...prev.priceRates,
+        {
+          price: Number(priceRateInput.price),
+          rateType: priceRateInput.rateType,
+        },
+      ],
+    }));
+    setPriceRateInput({ price: "", rateType: "" });
+  };
+
+  const handleDeletePriceRate = (idx) => {
+    setForm((prev) => ({
+      ...prev,
+      priceRates: prev.priceRates.filter((_, i) => i !== idx),
+    }));
+  };
+
   const handleAddStable = (e) => {
     e.preventDefault();
-    if (!form.title || !form.details || !form.price || form.images.length === 0) return;
+    if (
+      !form.title ||
+      !form.details ||
+      form.images.length === 0 ||
+      !form.priceRates ||
+      form.priceRates.length === 0
+    )
+      return;
+    // Use the first priceRate as the main price for display
+    const mainPrice = form.priceRates[0]?.price || 0;
     const newStable = {
       id: Date.now().toString(),
       title: form.title,
       details: form.details,
-      price: Number(form.price),
+      price: mainPrice,
       rating: 0,
       images: imagePreviews,
+      slots: form.slots,
+      priceRates: form.priceRates,
     };
     setStables((prev) => [newStable, ...prev]);
-    setForm({ title: "", details: "", price: "", images: [] });
+    setForm({ title: "", details: "", images: [], slots: [], priceRates: [] });
     setImagePreviews([]);
+    setSlotInput({ day: "", startTime: "", endTime: "" });
+    setPriceRateInput({ price: "", rateType: "" });
     setShowModal(false);
   };
 
@@ -100,10 +187,13 @@ export default function Stables() {
     setForm({
       title: stable.title,
       details: stable.details,
-      price: stable.price,
       images: [],
+      slots: stable.slots || [],
+      priceRates: stable.priceRates || [],
     });
     setImagePreviews(stable.images);
+    setSlotInput({ day: "", startTime: "", endTime: "" });
+    setPriceRateInput({ price: "", rateType: "" });
     setStables((prev) => prev.filter((s) => s.id !== stable.id));
     setShowModal(true);
   };
@@ -161,6 +251,31 @@ export default function Stables() {
               </span>
               <StarRating rating={stable.rating} />
             </div>
+            {/* Price Rates Display */}
+            {stable.priceRates && stable.priceRates.length > 0 && (
+              <div className="mt-2">
+                <span className="text-xs font-semibold text-brand/70">Price Rates:</span>
+                <ul className="text-xs text-brand/80 mt-1 space-y-1">
+                  {stable.priceRates.map((rate, idx) => (
+                    <li key={idx}>
+                      Rs. {rate.price.toLocaleString()} / {rate.rateType}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {stable.slots && stable.slots.length > 0 && (
+              <div className="mt-2">
+                <span className="text-xs font-semibold text-brand/70">Slots:</span>
+                <ul className="text-xs text-brand/80 mt-1 space-y-1">
+                  {stable.slots.map((slot, idx) => (
+                    <li key={idx}>
+                      {slot.day} - {slot.startTime} to {slot.endTime}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {stable.images && stable.images.length > 1 && (
               <div className="flex gap-1 mt-2">
                 {stable.images.slice(1, 4).map((img, idx) => (
@@ -185,8 +300,10 @@ export default function Stables() {
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={() => {
                 setShowModal(false);
-                setForm({ title: "", details: "", price: "", images: [] });
+                setForm({ title: "", details: "", images: [], slots: [], priceRates: [] });
                 setImagePreviews([]);
+                setSlotInput({ day: "", startTime: "", endTime: "" });
+                setPriceRateInput({ price: "", rateType: "" });
               }}
               title="Close"
             >
@@ -218,17 +335,59 @@ export default function Stables() {
                   required
                 />
               </div>
+              {/* Price Rate Section - always visible */}
               <div>
-                <label className="block text-sm font-medium text-brand mb-1">Price</label>
-                <input
-                  type="number"
-                  name="price"
-                  value={form.price}
-                  onChange={handleInputChange}
-                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
-                  min={0}
-                  required
-                />
+                <label className="block text-sm font-medium text-brand mb-1">Price Rates</label>
+                <div className="flex justify-between gap-2 mb-2">
+                  <input
+                    type="number"
+                    name="price"
+                    value={priceRateInput.price}
+                    onChange={handlePriceRateInputChange}
+                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                    placeholder="Price"
+                    min={0}
+                  />
+                  <select
+                    name="rateType"
+                    value={priceRateInput.rateType}
+                    onChange={handlePriceRateInputChange}
+                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                  >
+                    <option value="">Select Rate</option>
+                    <option value="hour">Hour</option>
+                    <option value="day">Day</option>
+                    <option value="week">Week</option>
+                    <option value="month">Month</option>
+                  </select>
+                  <button
+                    type="button"
+                    className="p-1 rounded bg-[color:var(--primary)] text-white hover:bg-[color:var(--primary)]/90 flex items-center"
+                    onClick={handleAddPriceRate}
+                    title="Add Price Rate"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+                {form.priceRates && form.priceRates.length > 0 && (
+                  <ul className="space-y-1">
+                    {form.priceRates.map((rate, idx) => (
+                      <li key={idx} className="flex items-center gap-2 text-xs bg-gray-50 px-2 py-1 rounded">
+                        <span>
+                          Rs. {rate.price.toLocaleString()} / {rate.rateType}
+                        </span>
+                        <button
+                          type="button"
+                          className="ml-1 text-red-500 hover:text-red-700"
+                          onClick={() => handleDeletePriceRate(idx)}
+                          title="Delete Price Rate"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-brand mb-1">Images</label>
@@ -252,6 +411,70 @@ export default function Stables() {
                       />
                     ))}
                   </div>
+                )}
+              </div>
+              {/* Slots Section */}
+              <div>
+                <label className="block text-sm font-medium text-brand mb-1">Slots</label>
+                <div className="flex gap-2 mb-2">
+                  <select
+                    name="day"
+                    value={slotInput.day}
+                    onChange={handleSlotInputChange}
+                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                  >
+                    <option value="">Day</option>
+                    <option value="Monday">Monday</option>
+                    <option value="Tuesday">Tuesday</option>
+                    <option value="Wednesday">Wednesday</option>
+                    <option value="Thursday">Thursday</option>
+                    <option value="Friday">Friday</option>
+                    <option value="Saturday">Saturday</option>
+                    <option value="Sunday">Sunday</option>
+                  </select>
+                  <input
+                    type="time"
+                    name="startTime"
+                    value={slotInput.startTime}
+                    onChange={handleSlotInputChange}
+                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                    placeholder="Start Time"
+                  />
+                  <input
+                    type="time"
+                    name="endTime"
+                    value={slotInput.endTime}
+                    onChange={handleSlotInputChange}
+                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                    placeholder="End Time"
+                  />
+                  <button
+                    type="button"
+                    className="p-1 rounded bg-[color:var(--primary)] text-white hover:bg-[color:var(--primary)]/90 flex items-center"
+                    onClick={handleAddSlot}
+                    title="Add Slot"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+                {form.slots && form.slots.length > 0 && (
+                  <ul className="space-y-1">
+                    {form.slots.map((slot, idx) => (
+                      <li key={idx} className="flex items-center gap-2 text-xs bg-gray-50 px-2 py-1 rounded">
+                        <span>
+                          {slot.day} - {slot.startTime} to {slot.endTime}
+                        </span>
+                        <button
+                          type="button"
+                          className="ml-1 text-red-500 hover:text-red-700"
+                          onClick={() => handleDeleteSlot(idx)}
+                          title="Delete Slot"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
               <button

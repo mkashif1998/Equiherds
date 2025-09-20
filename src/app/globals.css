@@ -20,7 +20,9 @@
 .secondary {
   color: var(--secondary);
 }
-
+.text-white {
+  color: #fff !important;
+}
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
