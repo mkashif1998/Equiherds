@@ -55,8 +55,16 @@ export const deleteRequest = async (url) => {
             'Content-Type': 'application/json',
         },
     });
-    const data = await response.json();
-    return data;
+    if (response.status === 204) {
+        return { ok: true };
+    }
+    // Some APIs respond with empty body but 200
+    const text = await response.text();
+    try {
+        return text ? JSON.parse(text) : { ok: response.ok };
+    } catch (_) {
+        return { ok: response.ok };
+    }
 }
 
 
@@ -86,6 +94,36 @@ export const uploadFile = async (file) => {
         return result[0];
     }
 
+    throw new Error("Unexpected upload response");
+}
+
+// Upload multiple files in a single request and return an array of URLs
+export const uploadFiles = async (files) => {
+    const fileArray = Array.from(files || []).filter(Boolean);
+    if (fileArray.length === 0) {
+        throw new Error("No files provided");
+    }
+
+    const formData = new FormData();
+    for (const f of fileArray) {
+        formData.append('files', f);
+    }
+
+    const response = await fetch('https://lms-api.wiserbee.ca/api/Document/documents-upload', {
+        method: 'POST',
+        body: formData,
+    });
+
+    if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(text || `Upload failed with status ${response.status}`);
+    }
+
+    const result = await response.json();
+    // Expected response: ["https://.../file1.png", "https://.../file2.png"]
+    if (Array.isArray(result) && result.every((u) => typeof u === 'string')) {
+        return result;
+    }
     throw new Error("Unexpected upload response");
 }
 

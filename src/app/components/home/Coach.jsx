@@ -1,5 +1,7 @@
 "use client";
 import Image from "next/image";
+import { useEffect, useState } from "react";
+import { getRequest } from "@/service";
 
 // Star Rating Component
 const StarRating = ({ rating, maxRating = 5 }) => {
@@ -23,44 +25,35 @@ const StarRating = ({ rating, maxRating = 5 }) => {
 };
 
 const Coach = () => {
-  const trainers = [
-    {
-      id: 1,
-      name: "Sarah Johnson",
-      image: "/trainer/5.jpg",
-      price: "$150",
-      rating: 4.8,
-      experience: "8 years",
-      specialization: "Dressage Training"
-    },
-    {
-      id: 2,
-      name: "Michael Chen",
-      image: "/trainer/2.jpg",
-      price: "$180",
-      rating: 4.9,
-      experience: "12 years",
-      specialization: "Jumping & Cross Country"
-    },
-    {
-      id: 3,
-      name: "Emma Williams",
-      image: "/trainer/3.jpg",
-      price: "$120",
-      rating: 4.7,
-      experience: "6 years",
-      specialization: "Beginner Lessons"
-    },
-    {
-      id: 4,
-      name: "David Rodriguez",
-      image: "/trainer/4.jpg",
-      price: "$200",
-      rating: 5.0,
-      experience: "15 years",
-      specialization: "Advanced Training"
-    }
-  ];
+  const [trainers, setTrainers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchTrainers = async () => {
+      try {
+        setLoading(true);
+        const data = await getRequest("/api/trainer");
+        const normalized = Array.isArray(data)
+          ? data.map((t) => ({
+              id: t._id,
+              name: t?.userId ? `${t.userId.firstName || ""} ${t.userId.lastName || ""}`.trim() : t.title || "Trainer",
+              image: Array.isArray(t.images) && t.images.length > 0 ? t.images[0] : "/trainer/1.jpg",
+              price: typeof t.price === "number" ? t.price : Number(t.price) || 0,
+              rating: typeof t.rating === "number" ? t.rating : 0,
+              experience: t.Experience ? `${t.Experience} years` : "",
+              specialization: t.title || "",
+            }))
+          : [];
+        setTrainers(normalized);
+      } catch (e) {
+        setError("Failed to load trainers");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTrainers();
+  }, []);
 
   return (
     <section className="py-16 px-4 sm:px-8 lg:px-16 bg-gray-50">
@@ -76,7 +69,16 @@ const Coach = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-          {trainers.map((trainer) => (
+          {loading && (
+            <div className="col-span-1 md:col-span-2 lg:col-span-4 text-center text-gray-500">Loading trainers...</div>
+          )}
+          {!loading && error && (
+            <div className="col-span-1 md:col-span-2 lg:col-span-4 text-center text-red-500">{error}</div>
+          )}
+          {!loading && !error && trainers.length === 0 && (
+            <div className="col-span-1 md:col-span-2 lg:col-span-4 text-center text-gray-500">No trainers found</div>
+          )}
+          {!loading && !error && trainers.map((trainer) => (
             <div key={trainer.id} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
               {/* Trainer Image */}
               <div className="relative h-64 overflow-hidden">
@@ -88,7 +90,7 @@ const Coach = () => {
                   className="object-cover w-full h-full hover:scale-105 transition-transform duration-300"
                 />
                 <div className="absolute top-4 right-4 bg-white bg-opacity-90 rounded-full px-3 py-1">
-                  <span className="text-sm font-semibold text-gray-800">{trainer.price}/hr</span>
+                  <span className="text-sm font-semibold text-gray-800">${trainer.price}/hr</span>
                 </div>
               </div>
               
@@ -96,11 +98,13 @@ const Coach = () => {
               <div className="p-6">
                 <h3 className="text-xl font-bold text-gray-800 mb-2">{trainer.name}</h3>
                 <p className="text-gray-600 text-sm mb-3">{trainer.specialization}</p>
-                <p className="text-gray-500 text-sm mb-4">Experience: {trainer.experience}</p>
+                {trainer.experience && (
+                  <p className="text-gray-500 text-sm mb-4">Experience: {trainer.experience}</p>
+                )}
                 
                 {/* Rating */}
                 <div className="mb-4">
-                  <StarRating rating={trainer.rating} />
+                  <StarRating rating={trainer.rating || 0} />
                 </div>
                 
                 {/* Contact Button */}

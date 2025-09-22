@@ -1,26 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import MyProfile from "./MyProfile";
 import Stables from "./Stables";
 import Subscription from "./Subscription";
 import Training from "./Training";
 import MyServices from "./MyServices";
 import Client from "./Client";
+import { getUserData } from "../utils/localStorage";
 
-const tabs = [
-  { key: "profile", label: "My Profile" },
-  { key: "subscription", label: "Subscription" },
-  { key: "training", label: "Training" },
-  { key: "stables", label: "Stables" },
-  { key: "myServices", label: "My Services" },
-  { key: "client", label: "Client" },
-  { key: "logout", label: "Logout" },
-];
+
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("profile");
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => setIsMounted(true), []);
+  const userData = isMounted ? getUserData() : null;
 
+  const sellerTabs = [
+    { key: "profile", label: "My Profile" },
+    { key: "subscription", label: "Subscription" },
+    { key: "training", label: "Training" },
+    { key: "stables", label: "Stables" },
+    { key: "client", label: "Client" },
+    { key: "logout", label: "Logout" },
+  ];
+
+  const buyerTabs = [
+    { key: "profile", label: "My Profile" },
+    { key: "myServices", label: "My Services" },
+    { key: "logout", label: "Logout" },
+  ];
+
+  const tabs = (userData?.accountType === "seller") ? sellerTabs : buyerTabs;
   const handleLogout = () => {
     try {
       if (typeof window !== "undefined") {
@@ -55,12 +67,12 @@ export default function ProfilePage() {
         </aside>
 
         <section className="min-h-[320px] p-4 rounded border border-[color:var(--primary)] bg-white">
-          {activeTab === "profile" && <MyProfile />}
-          {activeTab === "subscription" && <Subscription />}
-          {activeTab === "training" && <Training />}
-          {activeTab === "stables" && <Stables />}
-          {activeTab === "myServices" && <MyServices />}
-          {activeTab === "client" && <Client />}
+          {isMounted && activeTab === "profile" && <MyProfile />}
+          {isMounted && activeTab === "subscription" && <Subscription />}
+          {isMounted && activeTab === "training" && <Training />}
+          {isMounted && activeTab === "stables" && <Stables />}
+          {isMounted && activeTab === "myServices" && <MyServices />}
+          {isMounted && activeTab === "client" && <Client />}
         </section>
       </div>
     </div>

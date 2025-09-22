@@ -125,7 +125,7 @@ export async function POST(req) {
     // Add all user info (except password) to the token
     const { _id, firstName, lastName, email: userEmail, accountType, phoneNumber, companyName, brandImage, companyInfo } = user;
     const tokenPayload = {
-      sub: _id.toString(),
+      id: _id.toString(),
       firstName,
       lastName,
       email: userEmail,

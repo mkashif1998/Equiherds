@@ -15,6 +15,10 @@ const userSchema = new mongoose.Schema({
   companyName: { type: String },
   brandImage: { type: String }, 
   companyInfo: { type: String },
+  subscriptionStatus: { type: String, required:  false },
+  subscriptionExpiry: { type: String, required:  false },
+  Details: { type: String, required:  false },
+  profilePicture: { type: String, required:  false },
 }, {
   timestamps: true 
 });

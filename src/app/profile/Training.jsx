@@ -1,26 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Edit, Trash, Plus, X } from "lucide-react";
+import { getUserData } from "../utils/localStorage";
+import { postRequest, uploadFiles, deleteRequest, putRequest } from "@/service";
+import { toast } from "react-hot-toast";
 
-const dummyStables = [
-  {
-    id: "1",
-    title: "Luxury Stable 1",
-    details: "Spacious stable with modern amenities and 24/7 care.",
-    price: 25000,
-    rating: 4.5,
-    images: ["/trainer/5.jpg"],
-  },
-  {
-    id: "2",
-    title: "Premium Stable 2",
-    details: "Well-ventilated stable with attached paddock.",
-    price: 18000,
-    rating: 4.0,
-    images: ["/trainer/1.jpg"],
-  },
-];
+const dummyStables = [];
 
 function StarRating({ rating }) {
   const fullStars = Math.floor(rating);
@@ -58,6 +44,7 @@ export default function Trainer() {
     title: "",
     details: "",
     price: "",
+    Experience: "",
     images: [],
     slots: [],
   });
@@ -67,6 +54,12 @@ export default function Trainer() {
     startTime: "",
     endTime: "",
   });
+  const [submitting, setSubmitting] = useState(false);
+  const [loadingList, setLoadingList] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  // Store previous images for edit mode
+  const [prevImages, setPrevImages] = useState([]);
+  console.log("editingId", editingId);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -79,27 +72,130 @@ export default function Trainer() {
     setImagePreviews(files.map((file) => URL.createObjectURL(file)));
   };
 
-  const handleAddStable = (e) => {
+  const handleAddStable = async (e) => {
     e.preventDefault();
-    if (!form.title || !form.details || !form.price || form.images.length === 0) return;
-    const newStable = {
-      id: Date.now().toString(),
-      title: form.title,
-      details: form.details,
-      price: Number(form.price),
-      rating: 0,
-      images: imagePreviews,
-      slots: form.slots,
-    };
-    setStables((prev) => [newStable, ...prev]);
-    setForm({ title: "", details: "", price: "", images: [], slots: [] });
-    setImagePreviews([]);
-    setSlotInput({ day: "", startTime: "", endTime: "" });
-    setShowModal(false);
+    if (!form.title || !form.details || !form.price) return;
+
+    const tokenData = getUserData();
+    const userId = tokenData?.id || tokenData?.sub || tokenData?._id || null;
+    if (!userId) return;
+
+    // Require at least one slot to map to API schedule schema
+    const scheduleSource = form.slots && form.slots.length > 0 ? form.slots[0] : slotInput;
+    if (!scheduleSource.day || !scheduleSource.startTime || !scheduleSource.endTime) return;
+
+    setSubmitting(true);
+    try {
+      let uploadedUrls = [];
+      // If editing, allow keeping previous images if no new images are selected
+      if (editingId) {
+        if (form.images && form.images.length > 0) {
+          // New images selected, upload them
+          uploadedUrls = await uploadFiles(form.images);
+        } else if (prevImages && prevImages.length > 0) {
+          // No new images, keep previous images
+          uploadedUrls = prevImages;
+        } else {
+          // No images at all, show error and abort
+          toast.error("Please provide at least one image.");
+          setSubmitting(false);
+          return;
+        }
+      } else {
+        // Creating new: must have images
+        if (!form.images || form.images.length === 0) {
+          toast.error("Please provide at least one image.");
+          setSubmitting(false);
+          return;
+        }
+        uploadedUrls = await uploadFiles(form.images);
+      }
+
+      // Add Experience to payload as requested
+      const payload = {
+        userId,
+        title: form.title,
+        details: form.details,
+        price: Number(form.price),
+        Experience: form.Experience, // Experience is already included here
+        schedule: {
+          day: scheduleSource.day,
+          startTime: scheduleSource.startTime,
+          endTime: scheduleSource.endTime,
+        },
+        images: uploadedUrls,
+        Experience: form.Experience, // Add Experience (capital E) as well
+      };
+
+      if (editingId) {
+        const updated = await putRequest(`/api/trainer/${editingId}`, payload);
+        setStables((prev) =>
+          prev.map((s) =>
+            s.id === editingId
+              ? {
+                  id: editingId,
+                  title: payload.title,
+                  details: payload.details,
+                  price: payload.price,
+                  Experience: payload.Experience,
+                  rating: s.rating || 0,
+                  images: payload.images,
+                  slots: [payload.schedule],
+                }
+              : s
+          )
+        );
+        toast.success("Trainer updated");
+      } else {
+        const created = await postRequest("/api/trainer", payload);
+        const newStable = {
+          id: created?._id || Date.now().toString(),
+          title: payload.title,
+          details: payload.details,
+          price: payload.price,
+          Experience: payload.Experience,
+          rating: 0,
+          images: uploadedUrls,
+          slots: [payload.schedule],
+        };
+        setStables((prev) => [newStable, ...prev]);
+        toast.success("Trainer created");
+      }
+
+      setEditingId(null);
+      setForm({ title: "", details: "", price: "", Experience: "", images: [], slots: [] });
+      setImagePreviews([]);
+      setSlotInput({ day: "", startTime: "", endTime: "" });
+      setPrevImages([]);
+      setShowModal(false);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to submit trainer", err);
+      // Show more specific error if it's the "No files provided" error
+      if (
+        err &&
+        typeof err.message === "string" &&
+        err.message.toLowerCase().includes("no files provided")
+      ) {
+        toast.error("Please provide at least one image.");
+      } else {
+        toast.error("Action failed");
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleDelete = (id) => {
-    setStables((prev) => prev.filter((s) => s.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      await deleteRequest(`/api/trainer/${id}`);
+      setStables((prev) => prev.filter((s) => s.id !== id));
+      toast.success("Trainer deleted");
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to delete trainer", e);
+      toast.error("Delete failed");
+    }
   };
 
   // For simplicity, edit just fills the form and removes the old one
@@ -108,14 +204,49 @@ export default function Trainer() {
       title: stable.title,
       details: stable.details,
       price: stable.price,
+      Experience: stable.Experience || "",
       images: [],
       slots: stable.slots || [],
     });
     setImagePreviews(stable.images);
+    setPrevImages(stable.images || []);
     setSlotInput({ day: "", startTime: "", endTime: "" });
-    setStables((prev) => prev.filter((s) => s.id !== stable.id));
+    setEditingId(stable.id);
     setShowModal(true);
   };
+
+  // Load trainers by current user
+  useEffect(() => {
+    async function loadByUser() {
+      const tokenData = getUserData();
+      const userId = tokenData?.id || null;
+      if (!userId) return;
+      try {
+        setLoadingList(true);
+        const res = await fetch(`/api/trainer?userId=${userId}`);
+        const list = await res.json();
+        if (Array.isArray(list)) {
+          const mapped = list.map((t) => ({
+            id: t._id,
+            title: t.title,
+            details: t.details,
+            price: t.price,
+            Experience: t.Experience || "",
+            rating: 0,
+            images: Array.isArray(t.images) ? t.images : [],
+            slots: t.schedule ? [t.schedule] : [],
+          }));
+          setStables(mapped);
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error("Failed to load trainers", e);
+      } finally {
+        setLoadingList(false);
+      }
+    }
+    loadByUser();
+  }, []);
 
   // Slot input handlers
   const handleSlotInputChange = (e) => {
@@ -191,9 +322,14 @@ export default function Trainer() {
             </div>
             <h3 className="text-lg font-semibold text-brand">{stable.title}</h3>
             <p className="text-sm text-brand/80 mb-2">{stable.details}</p>
+            {stable.Experience && (
+              <p className="text-xs text-brand/70 mb-2">
+                <span className="font-semibold">Experience:</span> {stable.Experience}
+              </p>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-brand font-bold text-base">
-                {stable.price ? `Rs. ${stable.price.toLocaleString()}` : ""}
+                {stable.price ? `$. ${stable.price.toLocaleString()}` : ""}
               </span>
               <StarRating rating={stable.rating} />
             </div>
@@ -233,9 +369,10 @@ export default function Trainer() {
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={() => {
                 setShowModal(false);
-                setForm({ title: "", details: "", price: "", images: [], slots: [] });
+                setForm({ title: "", details: "", price: "", Experience: "", images: [], slots: [] });
                 setImagePreviews([]);
                 setSlotInput({ day: "", startTime: "", endTime: "" });
+                setPrevImages([]);
               }}
               title="Close"
             >
@@ -243,7 +380,7 @@ export default function Trainer() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <h3 className="text-xl font-semibold text-brand mb-4">Add New Trainer</h3>
+            <h3 className="text-xl font-semibold text-brand mb-4">{editingId ? 'Edit Trainer' : 'Add New Trainer'}</h3>
             <form onSubmit={handleAddStable} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-brand mb-1">Title</label>
@@ -265,6 +402,17 @@ export default function Trainer() {
                   className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
                   rows={3}
                   required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-brand mb-1">Experience</label>
+                <input
+                  type="text"
+                  name="Experience"
+                  value={form.Experience}
+                  onChange={handleInputChange}
+                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                  placeholder="e.g. 5 years, 2 years with horses, etc."
                 />
               </div>
               <div>
@@ -353,11 +501,11 @@ export default function Trainer() {
                   multiple
                   onChange={handleImageChange}
                   className="w-full text-sm"
-                  required={imagePreviews.length === 0}
+                  required={!editingId ? imagePreviews.length === 0 : false}
                 />
-                {imagePreviews.length > 0 && (
+                {(imagePreviews.length > 0 || (editingId && prevImages.length > 0)) && (
                   <div className="flex gap-2 mt-2 flex-wrap">
-                    {imagePreviews.map((src, idx) => (
+                    {(imagePreviews.length > 0 ? imagePreviews : prevImages).map((src, idx) => (
                       <img
                         key={idx}
                         src={src}
@@ -370,9 +518,10 @@ export default function Trainer() {
               </div>
               <button
                 type="submit"
-                className="w-full py-2 rounded bg-[color:var(--primary)] text-white font-medium hover:bg-[color:var(--primary)]/90 transition"
+                disabled={submitting}
+                className="w-full py-2 rounded bg-[color:var(--primary)] text-white font-medium hover:bg-[color:var(--primary)]/90 transition disabled:opacity-60"
               >
-                Save
+                {submitting ? "Saving…" : editingId ? "Update" : "Save"}
               </button>
             </form>
           </div>
