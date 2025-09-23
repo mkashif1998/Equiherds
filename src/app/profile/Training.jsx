@@ -149,7 +149,6 @@ export default function Trainer() {
       } else {
         const created = await postRequest("/api/trainer", payload);
         const newStable = {
-          id: created?._id || Date.now().toString(),
           title: payload.title,
           details: payload.details,
           price: payload.price,

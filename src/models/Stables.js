@@ -16,6 +16,7 @@ const stableSchema = new mongoose.Schema({
   Tittle: { type: String, required: true },
   Deatils: { type: String, required: true },
   image: [{ type: String }],
+  Rating: { type: Number, required: false },
   PriceRate: { type: priceRateSchema, required: true },
   Slotes: [slotSchema]
 }, {
