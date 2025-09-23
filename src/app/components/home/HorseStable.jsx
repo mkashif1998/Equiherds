@@ -1,6 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { getRequest } from "@/service";
 
 // StackedPolaroid component for exact image design match
 const StackedPolaroid = ({
@@ -74,49 +75,63 @@ const OurServices = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTile, setSelectedTile] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [tiles, setTiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const tiles = [
-    {
-      id: 1,
-      images: ["/product/1.jpg", "/product/2.jpg", "/product/3.jpg"],
-      heading: "Expert Horse Trainers",
-      paragraph: "Our experienced trainers provide personalized guidance for riders of all levels, ensuring a safe and enjoyable learning environment for both horse and rider.",
-      buttonText: "Learn More",
-      rating: 4.7,
-      price: 220,
-      extras: ["Helmet provided", "45 min session", "All ages welcome"]
-    },
-    {
-      id: 2,
-      images: ["/product/4.jpg", "/product/5.jpg", "/product/6.jpg"],
-      heading: "Modern Stable Facilities",
-      paragraph: "Enjoy our state-of-the-art stables, spacious paddocks, and clean, comfortable environments designed for the well-being of our horses and guests.",
-      buttonText: "Learn More",
-      rating: 4.3,
-      price: 260,
-      extras: ["Private locker", "Stable tour", "Free refreshments"]
-    },
-    {
-      id: 3,
-      images: ["/product/2.jpg", "/product/7.jpg", "/product/8.jpg"],
-      heading: "Premium Horses",
-      paragraph: "Ride and bond with our well-trained, gentle horses, carefully selected for temperament and quality to provide the best equestrian experience.",
-      buttonText: "Learn More",
-      rating: 4.9,
-      price: 320,
-      extras: ["Gentle breeds", "Photo session", "Safety equipment"]
-    },
-    {
-      id: 4,
-      images: ["/product/8.jpg", "/product/6.jpg", "/product/4.jpg"],
-      heading: "Comprehensive Riding",
-      paragraph: "From beginner lessons to advanced riding techniques, our programs are tailored to help you achieve your equestrian goals at your own pace.",
-      buttonText: "Learn More",
-      rating: 4.5,
-      price: 200,
-      extras: ["Group & private", "Gear included", "Completion certificate"]
-    }
-  ];
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        let data = await getRequest('/api/stables');
+        if (!Array.isArray(data)) data = [];
+        const mapped = data.map((s) => {
+          // PriceRate can be an array or object, handle both
+          let priceRates = [];
+          if (Array.isArray(s?.PriceRate) && s.PriceRate.length > 0) {
+            priceRates = s.PriceRate
+              .filter((pr) => typeof pr?.PriceRate === "number" && pr.PriceRate > 0 && pr.RateType)
+              .map((pr) => ({
+                price: pr.PriceRate,
+                rateType: pr.RateType,
+              }));
+          } else if (typeof s?.PriceRate === "object" && s.PriceRate !== null) {
+            if (typeof s.PriceRate.PriceRate === "number" && s.PriceRate.PriceRate > 0 && s.PriceRate.RateType) {
+              priceRates = [{
+                price: s.PriceRate.PriceRate,
+                rateType: s.PriceRate.RateType,
+              }];
+            }
+          }
+          // For backward compatibility, keep price/rateType as first entry if available
+          let price = priceRates.length > 0 ? priceRates[0].price : 0;
+          let rateType = priceRates.length > 0 ? priceRates[0].rateType : '';
+          return {
+            id: s?._id || s?.id,
+            images: Array.isArray(s?.image) && s.image.length > 0 ? s.image : ["/product/1.jpg"],
+            heading: s?.Tittle || "Stable",
+            paragraph: s?.Deatils || "",
+            rating: typeof s?.Rating === 'number' ? s.Rating : null,
+            price,
+            rateType,
+            priceRates, // array of { price, rateType }
+            slots: Array.isArray(s?.Slotes)
+              ? s.Slotes.map((sl) => ({ date: sl?.date || '', startTime: sl?.startTime || '', endTime: sl?.endTime || '' }))
+              : [],
+            ownerName: s?.userId ? `${s.userId.firstName || ''} ${s.userId.lastName || ''}`.trim() : '',
+            ownerEmail: s?.userId?.email || '',
+          };
+        });
+        setTiles(mapped);
+      } catch (e) {
+        setError('Failed to load stables');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   const openModal = (tile) => {
     setSelectedTile(tile);
@@ -176,6 +191,20 @@ const OurServices = () => {
     );
   };
 
+  // Helper to render all price rates
+  const renderPriceRates = (priceRates) => {
+    if (!Array.isArray(priceRates) || priceRates.length === 0) return null;
+    return (
+      <div className="flex flex-col items-center gap-1">
+        {priceRates.map((pr, idx) => (
+          <span key={idx} className="text-base font-semibold text-gray-800">
+            ${pr.price}{pr.rateType ? `/${pr.rateType}` : ''}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <section className="py-16 px-4 sm:px-8 lg:px-16 bg-gray-50">
       <div className="max-w-7xl mx-auto">
@@ -192,7 +221,16 @@ const OurServices = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
-          {tiles.map((tile) => (
+          {loading && (
+            <div className="col-span-1 md:col-span-2 lg:col-span-4 text-center text-gray-500">Loading...</div>
+          )}
+          {!loading && error && (
+            <div className="col-span-1 md:col-span-2 lg:col-span-4 text-center text-red-500">{error}</div>
+          )}
+          {!loading && !error && tiles.length === 0 && (
+            <div className="col-span-1 md:col-span-2 lg:col-span-4 text-center text-gray-500">No stables found</div>
+          )}
+          {!loading && !error && tiles.map((tile) => (
             <div key={tile.id} className="text-center px-4">
               {/* StackedPolaroid image design - exact match to original */}
               <div className="mb-6 flex justify-center">
@@ -213,15 +251,20 @@ const OurServices = () => {
                 <div className="w-16 h-0.5 bg-gray-300 ml-2"></div>
               </div>
               <p className="text-gray-600 text-sm mb-2 leading-relaxed">
-                {tile.paragraph.split(' ').slice(0, 10).join(' ')}
-                {tile.paragraph.split(' ').length > 10 && '...'}
+                {tile.paragraph ? `${tile.paragraph.split(' ').slice(0, 10).join(' ')}${tile.paragraph.split(' ').length > 10 ? '...' : ''}` : ''}
               </p>
-              <div className="flex items-center justify-center gap-4 mb-4">
-                {renderStars(tile.rating)}
-                <span className="text-base font-semibold text-gray-800">${tile.price}</span>
-              </div>
+              {/* <div className="flex items-center justify-center gap-4 mb-4">
+                {typeof tile.rating === 'number' && (
+                  renderStars(tile.rating)
+                )}
+                {tile.priceRates && tile.priceRates.length > 0 && (
+                  <div>
+                    {renderPriceRates(tile.priceRates)}
+                  </div>
+                )}
+              </div> */}
               <button onClick={() => openModal(tile)} className="secondary cursor-pointer font-medium text-sm transition-colors duration-200 border border-secondary rounded p-2">
-                {tile.buttonText}
+                View Details
               </button>
             </div>
           ))}
@@ -244,13 +287,18 @@ const OurServices = () => {
           }}
         >
           <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden">
-            {/* Header */}
+            {/* Header */
+            }
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <div className="flex items-center gap-3">
-                <h3 className="text-xl font-semibold secondary">{selectedTile.heading}</h3>
+                <div>
+                  <h3 className="text-xl font-semibold secondary">{selectedTile.heading}</h3>
+                  {(selectedTile.ownerName || selectedTile.ownerEmail) && (
+                    <p className="text-xs text-gray-500">By {selectedTile.ownerName || 'User'}{selectedTile.ownerEmail ? ` • ${selectedTile.ownerEmail}` : ''}</p>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
-                  {renderStars(selectedTile.rating)}
-                  <span className="text-lg font-bold text-gray-900">${selectedTile.price}</span>
+                  {typeof selectedTile.rating === 'number' && renderStars(selectedTile.rating)}
                 </div>
               </div>
               <button
@@ -345,15 +393,29 @@ const OurServices = () => {
                     {selectedTile.paragraph}
                   </p>
                   
-                  {Array.isArray(selectedTile.extras) && selectedTile.extras.length > 0 && (
+                  {Array.isArray(selectedTile.slots) && selectedTile.slots.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-800 mb-3">What's Included</h4>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-3">Available Slots</h4>
                       <div className="space-y-2">
-                        {selectedTile.extras.map((extra, idx) => (
+                        {selectedTile.slots.map((sl, idx) => (
                           <div key={idx} className="flex items-center gap-2">
                             <div className="w-2 h-2 bg-secondary rounded-full"></div>
-                            <span className="text-sm text-gray-700">{extra}</span>
+                            <span className="text-sm text-gray-700">{sl.date} {sl.startTime}-{sl.endTime}</span>
                           </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show all price rates in modal */}
+                  {Array.isArray(selectedTile.priceRates) && selectedTile.priceRates.length > 0 && (
+                    <div className="pt-2">
+                      <h4 className="text-sm font-semibold text-gray-800 mb-2">Price</h4>
+                      <div className="flex flex-col gap-1">
+                        {selectedTile.priceRates.map((pr, idx) => (
+                          <p key={idx} className="text-sm text-gray-700">
+                            ${pr.price}{pr.rateType ? `/${pr.rateType}` : ''}
+                          </p>
                         ))}
                       </div>
                     </div>
@@ -364,7 +426,7 @@ const OurServices = () => {
                       <button 
                         className="w-full px-6 py-3 bg-secondary text-white rounded-lg hover:bg-gray-900 transition-colors duration-200 font-medium"
                       >
-                        Book Your Ride
+                        Book Your Stable
                       </button>
                       <button 
                         onClick={closeModal} 

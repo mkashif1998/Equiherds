@@ -46,6 +46,7 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Stable from "@/models/Stables";
+import "@/models/User";
 
 export async function GET(req) {
   await connectDB();
@@ -81,12 +82,12 @@ export async function POST(req) {
     const body = await parseBody(req);
     const { userId, Tittle, Deatils, image, Rating, PriceRate, Slotes } = body || {};
 
-    if (!userId || !Tittle || !Deatils || !PriceRate) {
-      return NextResponse.json({ message: "userId, Tittle, Deatils, PriceRate are required" }, { status: 400 });
+    if (!userId || !Tittle || !Deatils) {
+      return NextResponse.json({ message: "userId, Tittle, Deatils are required" }, { status: 400 });
     }
 
-    const normalizedPriceRate = typeof PriceRate === "string" ? JSON.parse(PriceRate) : PriceRate;
     const normalizedSlotes = typeof Slotes === "string" ? JSON.parse(Slotes) : Slotes;
+    const normalizedPriceRate = typeof PriceRate === "string" ? JSON.parse(PriceRate) : PriceRate;
 
     const stable = await Stable.create({
       userId,
@@ -94,10 +95,17 @@ export async function POST(req) {
       Deatils: String(Deatils).trim(),
       image: Array.isArray(image) ? image : image ? [image] : [],
       Rating: Rating === undefined ? undefined : Number(Rating),
-      PriceRate: {
-        PriceRate: Number(normalizedPriceRate?.PriceRate),
-        RateType: String(normalizedPriceRate?.RateType),
-      },
+      PriceRate: Array.isArray(normalizedPriceRate)
+        ? normalizedPriceRate.map(s => ({
+            PriceRate: Number(s?.PriceRate),
+            RateType: String(s?.RateType),
+          }))
+        : normalizedPriceRate && typeof normalizedPriceRate === "object"
+          ? [{
+              PriceRate: Number(normalizedPriceRate?.PriceRate),
+              RateType: String(normalizedPriceRate?.RateType),
+            }]
+          : [],
       Slotes: Array.isArray(normalizedSlotes) ? normalizedSlotes.map(s => ({
         date: String(s?.date),
         startTime: String(s?.startTime),

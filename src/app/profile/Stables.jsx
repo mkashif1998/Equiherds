@@ -1,34 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Edit, Trash, Plus, X } from "lucide-react";
-
-const dummyStables = [
-  {
-    id: "1",
-    title: "Luxury Stable 1",
-    details: "Spacious stable with modern amenities and 24/7 care.",
-    price: 25000,
-    rating: 4.5,
-    images: ["/product/4.jpg"],
-    priceRates: [
-      { price: 25000, rateType: "month" },
-      { price: 8000, rateType: "week" },
-    ],
-  },
-  {
-    id: "2",
-    title: "Premium Stable 2",
-    details: "Well-ventilated stable with attached paddock.",
-    price: 18000,
-    rating: 4.0,
-    images: ["/product/1.jpg"],
-    priceRates: [
-      { price: 18000, rateType: "month" },
-      { price: 6000, rateType: "week" },
-    ],
-  },
-];
+import { getRequest, postRequest, putRequest, deleteRequest, uploadFiles } from "@/service";
+import { getUserData } from "@/app/utils/localStorage";
 
 function StarRating({ rating }) {
   const fullStars = Math.floor(rating);
@@ -57,7 +32,10 @@ function StarRating({ rating }) {
 }
 
 export default function Stables() {
-  const [stables, setStables] = useState(dummyStables);
+  const [stables, setStables] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({
     title: "",
@@ -148,38 +126,96 @@ export default function Stables() {
     }));
   };
 
-  const handleAddStable = (e) => {
+  const handleAddStable = async (e) => {
     e.preventDefault();
     if (
       !form.title ||
-      !form.details ||
-      form.images.length === 0 ||
-      !form.priceRates ||
-      form.priceRates.length === 0
-    )
+      !form.details
+    ) {
       return;
-    // Use the first priceRate as the main price for display
-    const mainPrice = form.priceRates[0]?.price || 0;
-    const newStable = {
-      id: Date.now().toString(),
-      title: form.title,
-      details: form.details,
-      price: mainPrice,
-      rating: 0,
-      images: imagePreviews,
-      slots: form.slots,
-      priceRates: form.priceRates,
-    };
-    setStables((prev) => [newStable, ...prev]);
-    setForm({ title: "", details: "", images: [], slots: [], priceRates: [] });
-    setImagePreviews([]);
-    setSlotInput({ day: "", startTime: "", endTime: "" });
-    setPriceRateInput({ price: "", rateType: "" });
-    setShowModal(false);
+    }
+
+    try {
+      const user = getUserData();
+      const userId = user?.userId || user?._id || user?.id;
+      // Upload images only if new files selected; otherwise use existing previews when editing
+      let uploadedImageUrls = [];
+      if (form.images && form.images.length > 0) {
+        uploadedImageUrls = await uploadFiles(form.images);
+      } else if (editingId && imagePreviews && imagePreviews.length > 0) {
+        uploadedImageUrls = imagePreviews;
+      }
+
+      // Ensure we have at least one price rate: use list, otherwise fall back to current input
+      const effectivePriceRates = (Array.isArray(form.priceRates) && form.priceRates.length > 0)
+        ? form.priceRates
+        : (priceRateInput.price && priceRateInput.rateType
+          ? [{ price: Number(priceRateInput.price), rateType: String(priceRateInput.rateType) }]
+          : []);
+      const firstRate = effectivePriceRates[0];
+
+      // Ensure slots include current input if user didn't click add
+      const effectiveSlots = (Array.isArray(form.slots) && form.slots.length > 0)
+        ? form.slots
+        : (slotInput.day && slotInput.startTime && slotInput.endTime
+          ? [{ day: slotInput.day, startTime: slotInput.startTime, endTime: slotInput.endTime }]
+          : []);
+      const payload = {
+        userId,
+        Tittle: String(form.title).trim(),
+        Deatils: String(form.details).trim(),
+        image: Array.isArray(uploadedImageUrls) ? uploadedImageUrls : [],
+        Rating: undefined, // optional
+        PriceRate: Array.isArray(effectivePriceRates)
+          ? effectivePriceRates.map((r) => ({
+              PriceRate: Number(r.price),
+              RateType: String(r.rateType),
+            }))
+          : [],
+        Slotes: Array.isArray(effectiveSlots)
+          ? effectiveSlots.map((s) => ({
+              date: String(s?.day || ""), // backend expects 'date'; mapping 'day' here
+              startTime: String(s?.startTime || ""),
+              endTime: String(s?.endTime || ""),
+            }))
+          : [],
+      };
+
+      // Safety: ensure no stray top-level fields leak into payload
+      // In case something upstream added these accidentally
+      if (Object.prototype.hasOwnProperty.call(payload, 'RateType')) delete payload.RateType;
+      // ensure array shape
+      if (!Array.isArray(payload.PriceRate)) payload.PriceRate = [];
+
+      let saved;
+      if (editingId) {
+        console.log(payload);
+        saved = await putRequest(`/api/stables/${editingId}`, payload);
+      } else {
+        saved = await postRequest("/api/stables", payload);
+      }
+
+      // Always refresh from server to avoid any local mismatches
+      await loadStables();
+
+      setForm({ title: "", details: "", images: [], slots: [], priceRates: [] });
+      setImagePreviews([]);
+      setSlotInput({ day: "", startTime: "", endTime: "" });
+      setPriceRateInput({ price: "", rateType: "" });
+      setEditingId("");
+      setShowModal(false);
+    } catch (err) {
+      console.error("Failed to create stable:", err);
+    }
   };
 
-  const handleDelete = (id) => {
-    setStables((prev) => prev.filter((s) => s.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      await deleteRequest(`/api/stables/${id}`);
+      setStables((prev) => prev.filter((s) => s.id !== id));
+    } catch (e) {
+      console.error("Failed to delete stable", e);
+    }
   };
 
   // For simplicity, edit just fills the form and removes the old one
@@ -194,9 +230,61 @@ export default function Stables() {
     setImagePreviews(stable.images);
     setSlotInput({ day: "", startTime: "", endTime: "" });
     setPriceRateInput({ price: "", rateType: "" });
-    setStables((prev) => prev.filter((s) => s.id !== stable.id));
+    setEditingId(stable.id);
     setShowModal(true);
   };
+
+  const loadStables = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const user = getUserData();
+      const userId = user?.userId || user?._id || user?.id;
+      // Try path style first; fallback to query style
+      let data = await getRequest(`/api/stables/${userId}`);
+      if (!Array.isArray(data)) {
+        data = await getRequest(`/api/stables?userId=${userId}`);
+      }
+      if (!Array.isArray(data)) data = [];
+      const normalized = data.map((s) => {
+        let priceRates = [];
+        if (Array.isArray(s?.PriceRate)) {
+          priceRates = s.PriceRate.map((r) => ({
+            price: Number(r?.PriceRate) || 0,
+            rateType: String(r?.RateType || ""),
+          }));
+        } else if (s?.PriceRate && typeof s.PriceRate === "object") {
+          priceRates = [{
+            price: Number(s.PriceRate?.PriceRate) || 0,
+            rateType: String(s.PriceRate?.RateType || ""),
+          }];
+        }
+        const price = priceRates[0]?.price || 0;
+        return ({
+        id: s?._id || s?.id,
+        title: s?.Tittle || s?.title || "",
+        details: s?.Deatils || s?.details || "",
+        images: Array.isArray(s?.image) ? s.image : [],
+        rating: typeof s?.Rating === "number" ? s.Rating : 0,
+        // Derive display price from PriceRate if available
+        price,
+        priceRates,
+        slots: Array.isArray(s?.Slotes)
+          ? s.Slotes.map((sl) => ({ day: sl?.date || "", startTime: sl?.startTime || "", endTime: sl?.endTime || "" }))
+          : [],
+      });
+      });
+      setStables(normalized);
+    } catch (e) {
+      setError("Failed to load stables");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStables();
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -207,14 +295,30 @@ export default function Stables() {
         </div>
         <button
           className="px-4 py-2 rounded bg-[color:var(--primary)] !text-white font-medium hover:bg-[color:var(--primary)]/90 transition cursor-pointer"
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            setEditingId("");
+            setForm({ title: "", details: "", images: [], slots: [], priceRates: [] });
+            setImagePreviews([]);
+            setSlotInput({ day: "", startTime: "", endTime: "" });
+            setPriceRateInput({ price: "", rateType: "" });
+            setShowModal(true);
+          }}
         >
           + Add New
         </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {stables.map((stable) => (
+        {loading && (
+          <div className="col-span-1 sm:col-span-2 md:col-span-3 text-center text-brand/60">Loading...</div>
+        )}
+        {!loading && error && (
+          <div className="col-span-1 sm:col-span-2 md:col-span-3 text-center text-red-500">{error}</div>
+        )}
+        {!loading && !error && stables.length === 0 && (
+          <div className="col-span-1 sm:col-span-2 md:col-span-3 text-center text-brand/60">No stables found</div>
+        )}
+        {!loading && !error && stables.map((stable) => (
           <div key={stable.id} className="bg-white rounded-lg border border-[color:var(--primary)] shadow-sm p-4 relative">
             <div className="relative w-full h-40 mb-3 rounded overflow-hidden bg-gray-100">
               {stable.images && stable.images.length > 0 ? (
@@ -304,6 +408,7 @@ export default function Stables() {
                 setImagePreviews([]);
                 setSlotInput({ day: "", startTime: "", endTime: "" });
                 setPriceRateInput({ price: "", rateType: "" });
+                setEditingId("");
               }}
               title="Close"
             >
@@ -311,7 +416,7 @@ export default function Stables() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <h3 className="text-xl font-semibold text-brand mb-4">Add New Stable</h3>
+            <h3 className="text-xl font-semibold text-brand mb-4">{editingId ? "Edit Stable" : "Add New Stable"}</h3>
             <form onSubmit={handleAddStable} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-brand mb-1">Title</label>
@@ -398,7 +503,7 @@ export default function Stables() {
                   multiple
                   onChange={handleImageChange}
                   className="w-full text-sm"
-                  required={imagePreviews.length === 0}
+                  required={!editingId && imagePreviews.length === 0}
                 />
                 {imagePreviews.length > 0 && (
                   <div className="flex gap-2 mt-2 flex-wrap">
@@ -481,7 +586,7 @@ export default function Stables() {
                 type="submit"
                 className="w-full py-2 rounded bg-[color:var(--primary)] text-white font-medium hover:bg-[color:var(--primary)]/90 transition"
               >
-                Save
+                {editingId ? "Update" : "Save"}
               </button>
             </form>
           </div>

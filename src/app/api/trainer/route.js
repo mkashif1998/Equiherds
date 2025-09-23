@@ -46,6 +46,7 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Trainer from "@/models/Trainer";
+import "@/models/User";
 
 export async function GET(req) {
   await connectDB();

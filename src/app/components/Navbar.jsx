@@ -44,9 +44,9 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="flex items-center gap-2 p-2 bg-white rounded"
+            className="flex items-center gap-2"
           >
-            <Image src="/logo.jpeg" alt="Logo" width={120} height={120} />
+            <Image src="/logo2.png" alt="Logo" width={120} height={120} />
           </Link>
         </div>
 
@@ -62,11 +62,11 @@ export default function Navbar() {
                 key={href}
                 href={href}
                 className={`flex items-center gap-2 underline-offset-4 ${
-                  isActive ? "secondary underline" : "text-brand hover:[color:var(--secondary)]"
+                  isActive ? "underline text-white" : "text-white hover:underline"
                 }`}
               >
-                <Icon className="[color:var(--secondary)]" size={22} />
-                <span className="[color:var(--secondary)] font-bold">{label}</span>
+                <Icon className="text-white" size={22} />
+                <span className="text-white font-bold">{label}</span>
               </Link>
             );
           })}
@@ -85,8 +85,8 @@ export default function Navbar() {
           className={`absolute left-0 top-0 h-full w-[80vw] max-w-[22rem] bg-primary border-r border-white/10 shadow-xl transition-transform duration-300 ease-out ${open ? "translate-x-0" : "-translate-x-full"}`}
         >
           <div className="px-4 py-3 flex items-center justify-between border-b border-white/10">
-            <Link href="/" className="flex items-center gap-2 gap-2 p-2 bg-white rounded" onClick={() => setOpen(false)}>
-              <Image src="/logo.jpeg" alt="Logo" width={110} height={110} />
+            <Link href="/" className="flex items-center gap-2 gap-2" onClick={() => setOpen(false)}>
+              <Image src="/logo2.png" alt="Logo" width={110} height={110} />
             </Link>
             <button aria-label="Close menu" className="p-2 rounded hover:bg-white/10 text-white" onClick={() => setOpen(false)}>
               <X size={20} />
@@ -99,13 +99,13 @@ export default function Navbar() {
                 <Link
                   key={href}
                   href={href}
-                  className={`flex items-center gap-3   ${
-                    isActive ? "[color:var(--secondary)] underline" : "text-brand hover:[color:var(--secondary)]"
+                  className={`flex items-center gap-3 ${
+                    isActive ? "underline text-white" : "text-white hover:underline"
                   }`}
                   onClick={() => setOpen(false)}
                 >
-                  <Icon className="[color:var(--secondary)]" size={20} />
-                  <span className="[color:var(--secondary)]">{label}</span>
+                  <Icon className="text-white" size={20} />
+                  <span className="text-white">{label}</span>
                 </Link>
               );
             })}
@@ -115,7 +115,3 @@ export default function Navbar() {
     </header>
   );
 }
-
-
-
-

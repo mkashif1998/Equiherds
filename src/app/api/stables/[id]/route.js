@@ -63,6 +63,7 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Stable from "@/models/Stables";
+import "@/models/User";
 
 async function parseBody(req) {
   const contentType = req.headers.get("content-type") || "";
@@ -104,10 +105,17 @@ export async function PUT(req, { params }) {
 
     const normalizedPriceRate = typeof PriceRate === "string" ? JSON.parse(PriceRate) : PriceRate;
     if (normalizedPriceRate !== undefined) {
-      update.PriceRate = {
-        PriceRate: Number(normalizedPriceRate?.PriceRate),
-        RateType: String(normalizedPriceRate?.RateType),
-      };
+      update.PriceRate = Array.isArray(normalizedPriceRate)
+        ? normalizedPriceRate.map(s => ({
+            PriceRate: Number(s?.PriceRate),
+            RateType: String(s?.RateType),
+          }))
+        : normalizedPriceRate && typeof normalizedPriceRate === "object"
+          ? [{
+              PriceRate: Number(normalizedPriceRate?.PriceRate),
+              RateType: String(normalizedPriceRate?.RateType),
+            }]
+          : [];
     }
 
     const normalizedSlotes = typeof Slotes === "string" ? JSON.parse(Slotes) : Slotes;

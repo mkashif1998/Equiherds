@@ -17,7 +17,7 @@ const stableSchema = new mongoose.Schema({
   Deatils: { type: String, required: true },
   image: [{ type: String }],
   Rating: { type: Number, required: false },
-  PriceRate: { type: priceRateSchema, required: true },
+  PriceRate: [priceRateSchema],
   Slotes: [slotSchema]
 }, {
   timestamps: true
