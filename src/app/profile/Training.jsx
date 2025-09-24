@@ -362,8 +362,8 @@ export default function Trainer() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 overflow-x-hidden">
+          <div className="bg-white rounded-lg shadow-lg py-8 px-4 w-full max-w-2xl relative overflow-x-hidden">
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={() => {
@@ -380,7 +380,7 @@ export default function Trainer() {
               </svg>
             </button>
             <h3 className="text-xl font-semibold text-brand mb-4">{editingId ? 'Edit Trainer' : 'Add New Trainer'}</h3>
-            <form onSubmit={handleAddStable} className="space-y-4">
+            <form onSubmit={handleAddStable} className="space-y-4 max-h-[80vh] overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-brand mb-1">Title</label>
                 <input
@@ -429,12 +429,12 @@ export default function Trainer() {
               {/* Slots Field */}
               <div>
                 <label className="block text-sm font-medium text-brand mb-1">Slots</label>
-                <div className="flex gap-2 mb-2">
+                <div className="flex flex-wrap items-stretch gap-2 mb-2">
                   <select
                     name="day"
                     value={slotInput.day}
                     onChange={handleSlotInputChange}
-                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] flex-1 min-w-0"
                   >
                     <option value="">Day</option>
                     <option value="Monday">Monday</option>
@@ -450,7 +450,7 @@ export default function Trainer() {
                     name="startTime"
                     value={slotInput.startTime}
                     onChange={handleSlotInputChange}
-                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] flex-1 min-w-0"
                     placeholder="Start Time"
                   />
                   <input
@@ -458,12 +458,12 @@ export default function Trainer() {
                     name="endTime"
                     value={slotInput.endTime}
                     onChange={handleSlotInputChange}
-                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] flex-1 min-w-0"
                     placeholder="End Time"
                   />
                   <button
                     type="button"
-                    className="p-1 rounded bg-[color:var(--primary)] text-white hover:bg-[color:var(--primary)]/90 flex items-center"
+                    className="p-1 rounded bg-[color:var(--primary)] text-white hover:bg-[color:var(--primary)]/90 flex items-center shrink-0"
                     onClick={handleAddSlot}
                     title="Add Slot"
                   >

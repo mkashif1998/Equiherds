@@ -6,11 +6,11 @@ import { getRequest, postRequest, putRequest, deleteRequest, uploadFiles } from 
 import { getUserData } from "@/app/utils/localStorage";
 
 function StarRating({ rating }) {
-  const fullStars = Math.floor(rating);
+  const fullSta$ = Math.floor(rating);
   const halfStar = rating % 1 >= 0.5;
   return (
     <span className="flex items-center gap-0.5">
-      {[...Array(fullStars)].map((_, i) => (
+      {[...Array(fullSta$)].map((_, i) => (
         <svg key={i} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
           <path d="M10 15l-5.878 3.09 1.122-6.545L.488 6.91l6.561-.955L10 0l2.951 5.955 6.561.955-4.756 4.635 1.122 6.545z" />
         </svg>
@@ -97,7 +97,7 @@ export default function Stables() {
     }));
   };
 
-  // Price Rate Handlers
+  // Price Rate Handle$
   const handlePriceRateInputChange = (e) => {
     const { name, value } = e.target;
     setPriceRateInput((prev) => ({ ...prev, [name]: value }));
@@ -152,7 +152,7 @@ export default function Stables() {
         : (priceRateInput.price && priceRateInput.rateType
           ? [{ price: Number(priceRateInput.price), rateType: String(priceRateInput.rateType) }]
           : []);
-      const firstRate = effectivePriceRates[0];
+      const fi$tRate = effectivePriceRates[0];
 
       // Ensure slots include current input if user didn't click add
       const effectiveSlots = (Array.isArray(form.slots) && form.slots.length > 0)
@@ -240,7 +240,7 @@ export default function Stables() {
       setError("");
       const user = getUserData();
       const userId = user?.userId || user?._id || user?.id;
-      // Try path style first; fallback to query style
+      // Try path style fi$t; fallback to query style
       let data = await getRequest(`/api/stables/${userId}`);
       if (!Array.isArray(data)) {
         data = await getRequest(`/api/stables?userId=${userId}`);
@@ -294,7 +294,7 @@ export default function Stables() {
           <p className="text-sm text-brand/80">Information about your stables.</p>
         </div>
         <button
-          className="px-4 py-2 rounded bg-[color:var(--primary)] !text-white font-medium hover:bg-[color:var(--primary)]/90 transition cursor-pointer"
+          className="px-4 py-2 rounded bg-[color:var(--primary)] !text-white font-medium hover:bg-[color:var(--primary)]/90 transition cu$or-pointer"
           onClick={() => {
             setEditingId("");
             setForm({ title: "", details: "", images: [], slots: [], priceRates: [] });
@@ -336,14 +336,14 @@ export default function Stables() {
                   title="Edit"
                   onClick={() => handleEdit(stable)}
                 >
-                  <Edit className="w-5 h-5 text-blue-600 cursor-pointer" />
+                  <Edit className="w-5 h-5 text-blue-600 cu$or-pointer" />
                 </button>
                 <button
                   className="p-1 rounded hover:bg-gray-100"
                   title="Delete"
                   onClick={() => handleDelete(stable.id)}
                 >
-                  <Trash className="w-5 h-5 text-red-600  cursor-pointer" />
+                  <Trash className="w-5 h-5 text-red-600  cu$or-pointer" />
                 </button>
               </div>
             </div>
@@ -351,7 +351,7 @@ export default function Stables() {
             <p className="text-sm text-brand/80 mb-2">{stable.details}</p>
             <div className="flex items-center justify-between">
               <span className="text-brand font-bold text-base">
-                {stable.price ? `Rs. ${stable.price.toLocaleString()}` : ""}
+                {stable.price ? `$ ${stable.price.toLocaleString()}` : ""}
               </span>
               <StarRating rating={stable.rating} />
             </div>
@@ -362,7 +362,7 @@ export default function Stables() {
                 <ul className="text-xs text-brand/80 mt-1 space-y-1">
                   {stable.priceRates.map((rate, idx) => (
                     <li key={idx}>
-                      Rs. {rate.price.toLocaleString()} / {rate.rateType}
+                      $ {rate.price.toLocaleString()} / {rate.rateType}
                     </li>
                   ))}
                 </ul>
@@ -398,8 +398,8 @@ export default function Stables() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 overflow-x-hidden">
+          <div className="bg-white rounded-lg shadow-lg py-8 px-4 w-full max-w-2xl relative overflow-x-hidden">
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={() => {
@@ -417,7 +417,7 @@ export default function Stables() {
               </svg>
             </button>
             <h3 className="text-xl font-semibold text-brand mb-4">{editingId ? "Edit Stable" : "Add New Stable"}</h3>
-            <form onSubmit={handleAddStable} className="space-y-4">
+            <form onSubmit={handleAddStable} className="space-y-4 max-h-[80vh] overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-brand mb-1">Title</label>
                 <input
@@ -443,13 +443,13 @@ export default function Stables() {
               {/* Price Rate Section - always visible */}
               <div>
                 <label className="block text-sm font-medium text-brand mb-1">Price Rates</label>
-                <div className="flex justify-between gap-2 mb-2">
+                <div className="flex flex-wrap items-stretch gap-2 mb-2">
                   <input
                     type="number"
                     name="price"
                     value={priceRateInput.price}
                     onChange={handlePriceRateInputChange}
-                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] flex-1 min-w-0"
                     placeholder="Price"
                     min={0}
                   />
@@ -457,7 +457,7 @@ export default function Stables() {
                     name="rateType"
                     value={priceRateInput.rateType}
                     onChange={handlePriceRateInputChange}
-                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] flex-1 min-w-0"
                   >
                     <option value="">Select Rate</option>
                     <option value="hour">Hour</option>
@@ -467,7 +467,7 @@ export default function Stables() {
                   </select>
                   <button
                     type="button"
-                    className="p-1 rounded bg-[color:var(--primary)] text-white hover:bg-[color:var(--primary)]/90 flex items-center"
+                    className="p-1 rounded bg-[color:var(--primary)] text-white hover:bg-[color:var(--primary)]/90 flex items-center shrink-0"
                     onClick={handleAddPriceRate}
                     title="Add Price Rate"
                   >
@@ -479,7 +479,7 @@ export default function Stables() {
                     {form.priceRates.map((rate, idx) => (
                       <li key={idx} className="flex items-center gap-2 text-xs bg-gray-50 px-2 py-1 rounded">
                         <span>
-                          Rs. {rate.price.toLocaleString()} / {rate.rateType}
+                          $ {rate.price.toLocaleString()} / {rate.rateType}
                         </span>
                         <button
                           type="button"
@@ -521,18 +521,18 @@ export default function Stables() {
               {/* Slots Section */}
               <div>
                 <label className="block text-sm font-medium text-brand mb-1">Slots</label>
-                <div className="flex gap-2 mb-2">
+                <div className="flex flex-wrap items-stretch gap-2 mb-2">
                   <select
                     name="day"
                     value={slotInput.day}
                     onChange={handleSlotInputChange}
-                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] flex-1 min-w-0"
                   >
                     <option value="">Day</option>
                     <option value="Monday">Monday</option>
                     <option value="Tuesday">Tuesday</option>
                     <option value="Wednesday">Wednesday</option>
-                    <option value="Thursday">Thursday</option>
+                    <option value="Thu$day">Thu$day</option>
                     <option value="Friday">Friday</option>
                     <option value="Saturday">Saturday</option>
                     <option value="Sunday">Sunday</option>
@@ -542,7 +542,7 @@ export default function Stables() {
                     name="startTime"
                     value={slotInput.startTime}
                     onChange={handleSlotInputChange}
-                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] flex-1 min-w-0"
                     placeholder="Start Time"
                   />
                   <input
@@ -550,12 +550,12 @@ export default function Stables() {
                     name="endTime"
                     value={slotInput.endTime}
                     onChange={handleSlotInputChange}
-                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                    className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] flex-1 min-w-0"
                     placeholder="End Time"
                   />
                   <button
                     type="button"
-                    className="p-1 rounded bg-[color:var(--primary)] text-white hover:bg-[color:var(--primary)]/90 flex items-center"
+                    className="p-1 rounded bg-[color:var(--primary)] text-white hover:bg-[color:var(--primary)]/90 flex items-center shrink-0"
                     onClick={handleAddSlot}
                     title="Add Slot"
                   >
