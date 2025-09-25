@@ -18,7 +18,8 @@ const stableSchema = new mongoose.Schema({
   image: [{ type: String }],
   Rating: { type: Number, required: false },
   PriceRate: [priceRateSchema],
-  Slotes: [slotSchema]
+  Slotes: [slotSchema],
+  status: { type: String, required: true, default: "active" }
 }, {
   timestamps: true
 });

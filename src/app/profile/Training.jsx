@@ -11,7 +11,7 @@ const dummyStables = [];
 function StarRating({ rating }) {
   const fullStars = Math.floor(rating);
   const halfStar = rating % 1 >= 0.5;
-  return (
+  return ( 
     <span className="flex items-center gap-0.5">
       {[...Array(fullStars)].map((_, i) => (
         <svg key={i} className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
@@ -19,7 +19,7 @@ function StarRating({ rating }) {
         </svg>
       ))}
       {halfStar && (
-        <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+        <svg key="half" className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
           <defs>
             <linearGradient id="half">
               <stop offset="50%" stopColor="currentColor" />
@@ -47,6 +47,7 @@ export default function Trainer() {
     Experience: "",
     images: [],
     slots: [],
+    status: "active",
   });
   const [imagePreviews, setImagePreviews] = useState([]);
   const [slotInput, setSlotInput] = useState({
@@ -118,6 +119,7 @@ export default function Trainer() {
         details: form.details,
         price: Number(form.price),
         Experience: form.Experience, // Experience is already included here
+        status: form.status || "active",
         schedule: {
           day: scheduleSource.day,
           startTime: scheduleSource.startTime,
@@ -138,6 +140,7 @@ export default function Trainer() {
                   details: payload.details,
                   price: payload.price,
                   Experience: payload.Experience,
+                  status: payload.status,
                   rating: s.rating || 0,
                   images: payload.images,
                   slots: [payload.schedule],
@@ -153,6 +156,7 @@ export default function Trainer() {
           details: payload.details,
           price: payload.price,
           Experience: payload.Experience,
+          status: payload.status,
           rating: 0,
           images: uploadedUrls,
           slots: [payload.schedule],
@@ -162,7 +166,7 @@ export default function Trainer() {
       }
 
       setEditingId(null);
-      setForm({ title: "", details: "", price: "", Experience: "", images: [], slots: [] });
+      setForm({ title: "", details: "", price: "", Experience: "", images: [], slots: [], status: "active" });
       setImagePreviews([]);
       setSlotInput({ day: "", startTime: "", endTime: "" });
       setPrevImages([]);
@@ -206,6 +210,7 @@ export default function Trainer() {
       Experience: stable.Experience || "",
       images: [],
       slots: stable.slots || [],
+      status: stable.status || "active",
     });
     setImagePreviews(stable.images);
     setPrevImages(stable.images || []);
@@ -231,6 +236,7 @@ export default function Trainer() {
             details: t.details,
             price: t.price,
             Experience: t.Experience || "",
+            status: t.status || "active",
             rating: 0,
             images: Array.isArray(t.images) ? t.images : [],
             slots: t.schedule ? [t.schedule] : [],
@@ -326,11 +332,20 @@ export default function Trainer() {
                 <span className="font-semibold">Experience:</span> {stable.Experience}
               </p>
             )}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-2">
               <span className="text-brand font-bold text-base">
                 {stable.price ? `$. ${stable.price.toLocaleString()}` : ""}
               </span>
               <StarRating rating={stable.rating} />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                stable.status === 'active' 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-red-100 text-red-800'
+              }`}>
+                {stable.status || 'active'}
+              </span>
             </div>
             {stable.slots && stable.slots.length > 0 && (
               <div className="mt-2">
@@ -368,7 +383,7 @@ export default function Trainer() {
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={() => {
                 setShowModal(false);
-                setForm({ title: "", details: "", price: "", Experience: "", images: [], slots: [] });
+                setForm({ title: "", details: "", price: "", Experience: "", images: [], slots: [], status: "active" });
                 setImagePreviews([]);
                 setSlotInput({ day: "", startTime: "", endTime: "" });
                 setPrevImages([]);
@@ -413,6 +428,18 @@ export default function Trainer() {
                   className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
                   placeholder="e.g. 5 years, 2 years with horses, etc."
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-brand mb-1">Status</label>
+                <select
+                  name="status"
+                  value={form.status}
+                  onChange={handleInputChange}
+                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-brand mb-1">Price/hour</label>

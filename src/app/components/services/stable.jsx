@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { getRequest } from "@/service";
 
 export default function StableList() {
@@ -12,6 +13,10 @@ export default function StableList() {
   const [minRating, setMinRating] = useState(0);
   const [priceMin, setPriceMin] = useState(0);
   const [priceMax, setPriceMax] = useState(0);
+  const [selectedDay, setSelectedDay] = useState("");
+  const [selectedStable, setSelectedStable] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -21,16 +26,51 @@ export default function StableList() {
       try {
         const data = await getRequest("/api/stables");
         const normalized = Array.isArray(data) ? data.map((d) => {
-          const priceValues = Array.isArray(d?.PriceRate) ? d.PriceRate.map((p) => Number(p?.PriceRate || 0)).filter((n) => !Number.isNaN(n)) : [];
-          const computedPrice = priceValues.length ? Math.min(...priceValues) : 0;
-          const image = Array.isArray(d?.image) && d.image.length ? d.image[0] : "/product/1.jpg";
+          // Handle images - can be from 'images' or 'image' field
+          const images = Array.isArray(d?.image) && d.image.length > 0 ? d.image : ["/product/1.jpg"];
+          
+          // Handle PriceRate - can be array or object
+          let priceRates = [];
+          if (Array.isArray(d?.PriceRate) && d.PriceRate.length > 0) {
+            priceRates = d.PriceRate
+              .filter((pr) => typeof pr?.PriceRate === "number" && pr.PriceRate > 0 && pr.RateType)
+              .map((pr) => ({
+                price: pr.PriceRate,
+                rateType: pr.RateType,
+              }));
+          } else if (typeof d?.PriceRate === "object" && d.PriceRate !== null) {
+            if (typeof d.PriceRate.PriceRate === "number" && d.PriceRate.PriceRate > 0 && d.PriceRate.RateType) {
+              priceRates = [{
+                price: d.PriceRate.PriceRate,
+                rateType: d.PriceRate.RateType,
+              }];
+            }
+          }
+          
+          // For backward compatibility, keep price as first entry if available
+          let price = priceRates.length > 0 ? priceRates[0].price : 0;
+          
           return {
             id: String(d?._id || ""),
             title: String(d?.Tittle || "Untitled Stable"),
             details: String(d?.Deatils || ""),
             rating: Number(d?.Rating || 0),
-            price: computedPrice,
-            image,
+            price,
+            priceRates,
+            images,
+            image: images[0], // Keep first image for card display
+            userId: d?.userId || null,
+            // Handle populated user data
+            ownerName: d?.userId ? `${d.userId.firstName || ''} ${d.userId.lastName || ''}`.trim() : '',
+            ownerEmail: d?.userId?.email || '',
+            slots: Array.isArray(d?.Slotes)
+              ? d.Slotes.map((sl) => ({ 
+                  date: sl?.date || '', 
+                  startTime: sl?.startTime || '', 
+                  endTime: sl?.endTime || '' 
+                }))
+              : [],
+            status: d?.status || "active",
           };
         }) : [];
         if (!cancelled) setItems(normalized);
@@ -52,6 +92,7 @@ export default function StableList() {
     setPriceMax(max);
     setMinRating(0);
     setSearch("");
+    setSelectedDay("");
   }, [items]);
 
   const filtered = useMemo(() => {
@@ -63,9 +104,10 @@ export default function StableList() {
       const matchesRating = Number(s.rating || 0) >= minRating;
       const price = Number(s.price || 0);
       const matchesPrice = price >= priceMin && price <= priceMax;
-      return matchesSearch && matchesRating && matchesPrice;
+      const matchesDay = selectedDay ? s.slots.some(slot => slot.date.toLowerCase() === selectedDay.toLowerCase()) : true;
+      return matchesSearch && matchesRating && matchesPrice && matchesDay;
     });
-  }, [items, search, minRating, priceMin, priceMax]);
+  }, [items, search, minRating, priceMin, priceMax, selectedDay]);
 
   function handleReset() {
     const prices = items.map((s) => s.price || 0);
@@ -75,7 +117,48 @@ export default function StableList() {
     setMinRating(0);
     setPriceMin(min);
     setPriceMax(max);
+    setSelectedDay("");
   }
+
+  function handleStableClick(stable) {
+    setSelectedStable(stable);
+    setCurrentImageIndex(0);
+    setIsModalOpen(true);
+  }
+
+  function closeModal() {
+    setIsModalOpen(false);
+    setSelectedStable(null);
+    setCurrentImageIndex(0);
+  }
+
+  const selectImage = (index) => {
+    setCurrentImageIndex(index);
+  };
+
+  const nextImage = () => {
+    if (selectedStable && selectedStable.images) {
+      setCurrentImageIndex((prev) => (prev + 1) % selectedStable.images.length);
+    }
+  };
+
+  const prevImage = () => {
+    if (selectedStable && selectedStable.images) {
+      setCurrentImageIndex((prev) => (prev - 1 + selectedStable.images.length) % selectedStable.images.length);
+    }
+  };
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") closeModal();
+      if (e.key === "ArrowLeft") prevImage();
+      if (e.key === "ArrowRight") nextImage();
+    };
+    if (isModalOpen) {
+      window.addEventListener("keydown", onKeyDown);
+    }
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isModalOpen, selectedStable]);
 
   return (
     <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
@@ -97,6 +180,20 @@ export default function StableList() {
               <span className="text-xs text-gray-500">{minRating.toFixed(1)}+</span>
             </div>
             <input id="rating" type="range" min={0} max={5} step={0.5} value={minRating} onChange={(e) => setMinRating(Number(e.target.value))} className="w-full" />
+          </div>
+
+          <div className="mb-6">
+            <label htmlFor="day-filter" className="mb-2 block text-sm font-medium text-gray-700">Available Day</label>
+            <select id="day-filter" value={selectedDay} onChange={(e) => setSelectedDay(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none ring-brand/20 transition focus:ring">
+              <option value="">All Days</option>
+              <option value="Monday">Monday</option>
+              <option value="Tuesday">Tuesday</option>
+              <option value="Wednesday">Wednesday</option>
+              <option value="Thursday">Thursday</option>
+              <option value="Friday">Friday</option>
+              <option value="Saturday">Saturday</option>
+              <option value="Sunday">Sunday</option>
+            </select>
           </div>
 
           <div className="mb-4">
@@ -129,7 +226,7 @@ export default function StableList() {
 
         <div className="grid grid-cols-1 items-stretch gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((svc) => (
-            <article key={svc.id} className="group flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md">
+            <article key={svc.id} className="group flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md cursor-pointer" onClick={() => handleStableClick(svc)}>
               <div className="relative aspect-[4/3] w-full overflow-hidden">
                 <img src={svc.image} alt={svc.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" />
               </div>
@@ -152,6 +249,176 @@ export default function StableList() {
           <div className="mt-10 rounded-lg border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">No stables match your filters.</div>
         )}
       </section>
+
+      {/* Modal */}
+      {isModalOpen && selectedStable && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeModal();
+          }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div>
+                  <h3 className="text-xl font-semibold text-brand">{selectedStable.title}</h3>
+                  {(selectedStable.ownerName || selectedStable.ownerEmail) && (
+                    <p className="text-xs text-gray-500">By {selectedStable.ownerName || 'User'}{selectedStable.ownerEmail ? ` • ${selectedStable.ownerEmail}` : ''}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Rating value={Number(selectedStable.rating || 0)} />
+                </div>
+              </div>
+              <button
+                onClick={closeModal}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 hover:text-gray-800 transition-colors"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Main Content */}
+            <div className="flex flex-col lg:flex-row">
+              {/* Image Gallery Section */}
+              <div className="lg:w-2/3">
+                {/* Large Main Image */}
+                <div className="relative bg-gray-100">
+                  <div className="relative h-[400px] lg:h-[500px] overflow-hidden">
+                    <Image
+                      src={selectedStable.images?.[currentImageIndex] || selectedStable.image || "/product/1.jpg"}
+                      alt={`${selectedStable.title} - Image ${currentImageIndex + 1}`}
+                      width={800}
+                      height={600}
+                      className="w-full h-full object-cover transition-all duration-300"
+                      priority
+                    />
+                    
+                    {/* Navigation Arrows */}
+                    {selectedStable.images && selectedStable.images.length > 1 && (
+                      <>
+                        <button
+                          onClick={prevImage}
+                          className="absolute left-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-all duration-200"
+                          aria-label="Previous image"
+                        >
+                          ‹
+                        </button>
+                        <button
+                          onClick={nextImage}
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-all duration-200"
+                          aria-label="Next image"
+                        >
+                          ›
+                        </button>
+                      </>
+                    )}
+
+                    {/* Image Counter */}
+                    {selectedStable.images && selectedStable.images.length > 1 && (
+                      <div className="absolute top-4 left-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                        {currentImageIndex + 1} / {selectedStable.images.length}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Thumbnail Strip */}
+                  {selectedStable.images && selectedStable.images.length > 1 && (
+                    <div className="p-4 bg-gray-50 border-t border-gray-200">
+                      <div className="flex gap-3 overflow-x-auto pb-2">
+                        {selectedStable.images.map((image, index) => (
+                          <button
+                            key={index}
+                            onClick={() => selectImage(index)}
+                            className={`relative flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                              index === currentImageIndex
+                                ? 'border-brand shadow-md scale-105'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <Image
+                              src={image}
+                              alt={`Thumbnail ${index + 1}`}
+                              width={80}
+                              height={64}
+                              className="w-full h-full object-cover"
+                            />
+                            {index === currentImageIndex && (
+                              <div className="absolute inset-0 bg-brand/20"></div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Content Section */}
+              <div className="lg:w-1/3 p-6 overflow-y-auto max-h-[400px] lg:max-h-[500px]">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-lg font-semibold text-gray-800">Price</h4>
+                    <div className="text-right">
+                      {Array.isArray(selectedStable.priceRates) && selectedStable.priceRates.length > 0 ? (
+                        selectedStable.priceRates.map((pr, idx) => (
+                          <p key={idx} className="text-lg font-bold text-brand">
+                            ${pr.price}{pr.rateType ? `/${pr.rateType}` : ''}
+                          </p>
+                        ))
+                      ) : (
+                        <p className="text-lg font-bold text-brand">${selectedStable.price}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-800 mb-2">Description</h4>
+                    <p className="text-gray-600 leading-relaxed text-sm">
+                      {selectedStable.details}
+                    </p>
+                  </div>
+
+                  {Array.isArray(selectedStable.slots) && selectedStable.slots.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-3">Available Slots</h4>
+                      <div className="space-y-2">
+                        {selectedStable.slots.map((sl, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-brand rounded-full"></div>
+                            <span className="text-sm text-gray-700">{sl.date} {sl.startTime}-{sl.endTime}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-4 border-t border-gray-200">
+                    <div className="flex flex-col gap-3">
+                      <button 
+                        className="w-full px-6 py-3 bg-brand text-white rounded-lg hover:bg-brand/90 transition-colors duration-200 font-medium"
+                      >
+                        Book Stable
+                      </button>
+                      <button 
+                        onClick={closeModal} 
+                        className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

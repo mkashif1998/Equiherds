@@ -16,7 +16,7 @@ function StarRating({ rating }) {
         </svg>
       ))}
       {halfStar && (
-        <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+        <svg key="half" className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
           <defs>
             <linearGradient id="half">
               <stop offset="50%" stopColor="currentColor" />
@@ -43,6 +43,7 @@ export default function Stables() {
     images: [],
     slots: [],
     priceRates: [],
+    status: "active",
   });
   const [imagePreviews, setImagePreviews] = useState([]);
   const [slotInput, setSlotInput] = useState({
@@ -166,6 +167,7 @@ export default function Stables() {
         Deatils: String(form.details).trim(),
         image: Array.isArray(uploadedImageUrls) ? uploadedImageUrls : [],
         Rating: undefined, // optional
+        status: form.status || "active",
         PriceRate: Array.isArray(effectivePriceRates)
           ? effectivePriceRates.map((r) => ({
               PriceRate: Number(r.price),
@@ -198,7 +200,7 @@ export default function Stables() {
       // Always refresh from server to avoid any local mismatches
       await loadStables();
 
-      setForm({ title: "", details: "", images: [], slots: [], priceRates: [] });
+      setForm({ title: "", details: "", images: [], slots: [], priceRates: [], status: "active" });
       setImagePreviews([]);
       setSlotInput({ day: "", startTime: "", endTime: "" });
       setPriceRateInput({ price: "", rateType: "" });
@@ -226,6 +228,7 @@ export default function Stables() {
       images: [],
       slots: stable.slots || [],
       priceRates: stable.priceRates || [],
+      status: stable.status || "active",
     });
     setImagePreviews(stable.images);
     setSlotInput({ day: "", startTime: "", endTime: "" });
@@ -269,6 +272,7 @@ export default function Stables() {
         // Derive display price from PriceRate if available
         price,
         priceRates,
+        status: s?.status || "active",
         slots: Array.isArray(s?.Slotes)
           ? s.Slotes.map((sl) => ({ day: sl?.date || "", startTime: sl?.startTime || "", endTime: sl?.endTime || "" }))
           : [],
@@ -297,7 +301,7 @@ export default function Stables() {
           className="px-4 py-2 rounded bg-[color:var(--primary)] !text-white font-medium hover:bg-[color:var(--primary)]/90 transition cu$or-pointer"
           onClick={() => {
             setEditingId("");
-            setForm({ title: "", details: "", images: [], slots: [], priceRates: [] });
+            setForm({ title: "", details: "", images: [], slots: [], priceRates: [], status: "active" });
             setImagePreviews([]);
             setSlotInput({ day: "", startTime: "", endTime: "" });
             setPriceRateInput({ price: "", rateType: "" });
@@ -349,11 +353,20 @@ export default function Stables() {
             </div>
             <h3 className="text-lg font-semibold text-brand">{stable.title}</h3>
             <p className="text-sm text-brand/80 mb-2">{stable.details}</p>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-2">
               <span className="text-brand font-bold text-base">
                 {stable.price ? `$ ${stable.price.toLocaleString()}` : ""}
               </span>
               <StarRating rating={stable.rating} />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                stable.status === 'active' 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-red-100 text-red-800'
+              }`}>
+                {stable.status || 'active'}
+              </span>
             </div>
             {/* Price Rates Display */}
             {stable.priceRates && stable.priceRates.length > 0 && (
@@ -404,12 +417,12 @@ export default function Stables() {
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={() => {
                 setShowModal(false);
-                setForm({ title: "", details: "", images: [], slots: [], priceRates: [] });
+                setForm({ title: "", details: "", images: [], slots: [], priceRates: [], status: "active" });
                 setImagePreviews([]);
                 setSlotInput({ day: "", startTime: "", endTime: "" });
                 setPriceRateInput({ price: "", rateType: "" });
                 setEditingId("");
-              }}
+              }} 
               title="Close"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -439,6 +452,18 @@ export default function Stables() {
                   rows={3}
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-brand mb-1">Status</label>
+                <select
+                  name="status"
+                  value={form.status}
+                  onChange={handleInputChange}
+                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
               </div>
               {/* Price Rate Section - always visible */}
               <div>

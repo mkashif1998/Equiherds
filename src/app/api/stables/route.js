@@ -80,12 +80,12 @@ export async function POST(req) {
   await connectDB();
   try {
     const body = await parseBody(req);
-    const { userId, Tittle, Deatils, image, Rating, PriceRate, Slotes } = body || {};
+    const { userId, Tittle, Deatils, image, Rating, PriceRate, Slotes, status } = body || {};
 
     if (!userId || !Tittle || !Deatils) {
       return NextResponse.json({ message: "userId, Tittle, Deatils are required" }, { status: 400 });
     }
-
+ 
     const normalizedSlotes = typeof Slotes === "string" ? JSON.parse(Slotes) : Slotes;
     const normalizedPriceRate = typeof PriceRate === "string" ? JSON.parse(PriceRate) : PriceRate;
 
@@ -95,6 +95,7 @@ export async function POST(req) {
       Deatils: String(Deatils).trim(),
       image: Array.isArray(image) ? image : image ? [image] : [],
       Rating: Rating === undefined ? undefined : Number(Rating),
+      status: status || "active",
       PriceRate: Array.isArray(normalizedPriceRate)
         ? normalizedPriceRate.map(s => ({
             PriceRate: Number(s?.PriceRate),

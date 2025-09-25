@@ -11,7 +11,7 @@
  *           type: string
  *         required: true
  *     responses:
- *       200:
+ *       200: 
  *         description: Stable found
  *         content:
  *           application/json:
@@ -94,7 +94,7 @@ export async function PUT(req, { params }) {
   await connectDB();
   try {
     const body = await parseBody(req);
-    const { userId, Tittle, Deatils, image, Rating, PriceRate, Slotes } = body || {};
+    const { userId, Tittle, Deatils, image, Rating, PriceRate, Slotes, status } = body || {};
 
     const update = {};
     if (userId !== undefined) update.userId = userId;
@@ -102,6 +102,7 @@ export async function PUT(req, { params }) {
     if (Deatils !== undefined) update.Deatils = String(Deatils).trim();
     if (image !== undefined) update.image = Array.isArray(image) ? image : image ? [image] : [];
     if (Rating !== undefined) update.Rating = Number(Rating);
+    if (status !== undefined) update.status = status;
 
     const normalizedPriceRate = typeof PriceRate === "string" ? JSON.parse(PriceRate) : PriceRate;
     if (normalizedPriceRate !== undefined) {

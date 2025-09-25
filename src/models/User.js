@@ -19,6 +19,7 @@ const userSchema = new mongoose.Schema({
   subscriptionExpiry: { type: String, required:  false },
   Details: { type: String, required:  false },
   profilePicture: { type: String, required:  false },
+  status: { type: String, required: true },
 }, {
   timestamps: true 
 });

@@ -93,7 +93,7 @@ export async function PUT(req, { params }) {
   await connectDB();
   try {
     const body = await parseBody(req);
-    const { title, details, price, schedule, images, userId, Experience } = body || {};
+    const { title, details, price, schedule, images, userId, Experience, status } = body || {};
 
     const normalizedSchedule = typeof schedule === "string" ? JSON.parse(schedule) : schedule;
 
@@ -111,6 +111,7 @@ export async function PUT(req, { params }) {
     }
     if (images !== undefined) update.images = Array.isArray(images) ? images : images ? [images] : [];
     if (Experience !== undefined) update.Experience = String(Experience).trim();
+    if (status !== undefined) update.status = status;
     const trainer = await Trainer.findByIdAndUpdate(params.id, update, { new: true, runValidators: true });
     if (!trainer) return NextResponse.json({ message: "Trainer not found" }, { status: 404 });
     return NextResponse.json(trainer, { status: 200 });

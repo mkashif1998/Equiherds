@@ -80,7 +80,7 @@ export async function POST(req) {
   await connectDB();
   try {
     const body = await parseBody(req);
-    const { userId, title, details, price, schedule, images, experience } = body || {};
+    const { userId, title, details, price, schedule, images, experience, status } = body || {};
 
     if (!userId || !title || !details || price === undefined || !schedule) {
       return NextResponse.json({ message: "userId, title, details, price, schedule are required" }, { status: 400 });
@@ -100,6 +100,7 @@ export async function POST(req) {
         endTime: normalizedSchedule?.endTime,
       },
       Experience: String(experience).trim(),
+      status: status || "active",
       images: Array.isArray(images) ? images : images ? [images] : [],
     });
 
