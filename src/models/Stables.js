@@ -11,12 +11,18 @@ const slotSchema = new mongoose.Schema({
   endTime: { type: String, required: true }
 }, { _id: false });
 
+const coordinatesSchema = new mongoose.Schema({
+  lat: { type: Number, required: true },
+  lng: { type: Number, required: true }
+}, { _id: false });
 const stableSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   Tittle: { type: String, required: true },
   Deatils: { type: String, required: true },
   image: [{ type: String }],
   Rating: { type: Number, required: false },
+  location: { type: String, required: true },
+  coordinates: { type: coordinatesSchema, required: true },
   PriceRate: [priceRateSchema],
   Slotes: [slotSchema],
   status: { type: String, required: true, default: "active" }

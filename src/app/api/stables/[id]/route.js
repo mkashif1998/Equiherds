@@ -81,7 +81,8 @@ async function parseBody(req) {
 export async function GET(_req, { params }) {
   await connectDB();
   try {
-    const stable = await Stable.findById(params.id).populate({ path: "userId", select: "firstName lastName email" });
+    const { id } = await params;
+    const stable = await Stable.findById(id).populate({ path: "userId", select: "firstName lastName email" });
     if (!stable) return NextResponse.json({ message: "Stable not found" }, { status: 404 });
     return NextResponse.json(stable, { status: 200 });
   } catch (error) {
@@ -93,13 +94,16 @@ export async function GET(_req, { params }) {
 export async function PUT(req, { params }) {
   await connectDB();
   try {
+    const { id } = await params;
     const body = await parseBody(req);
-    const { userId, Tittle, Deatils, image, Rating, PriceRate, Slotes, status } = body || {};
+    const { userId, Tittle, Deatils, location, coordinates, image, Rating, PriceRate, Slotes, status } = body || {};
 
     const update = {};
     if (userId !== undefined) update.userId = userId;
     if (Tittle !== undefined) update.Tittle = String(Tittle).trim();
     if (Deatils !== undefined) update.Deatils = String(Deatils).trim();
+    if (location !== undefined) update.location = String(location).trim();
+    if (coordinates !== undefined) update.coordinates = coordinates;
     if (image !== undefined) update.image = Array.isArray(image) ? image : image ? [image] : [];
     if (Rating !== undefined) update.Rating = Number(Rating);
     if (status !== undefined) update.status = status;
@@ -128,7 +132,7 @@ export async function PUT(req, { params }) {
       })) : [];
     }
 
-    const stable = await Stable.findByIdAndUpdate(params.id, update, { new: true, runValidators: true });
+    const stable = await Stable.findByIdAndUpdate(id, update, { new: true, runValidators: true });
     if (!stable) return NextResponse.json({ message: "Stable not found" }, { status: 404 });
     return NextResponse.json(stable, { status: 200 });
   } catch (error) {
@@ -140,7 +144,8 @@ export async function PUT(req, { params }) {
 export async function DELETE(_req, { params }) {
   await connectDB();
   try {
-    const result = await Stable.findByIdAndDelete(params.id);
+    const { id } = await params;
+    const result = await Stable.findByIdAndDelete(id);
     if (!result) return NextResponse.json({ message: "Stable not found" }, { status: 404 });
     return new NextResponse(null, { status: 204 });
   } catch (error) {

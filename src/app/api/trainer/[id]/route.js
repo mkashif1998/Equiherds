@@ -80,7 +80,8 @@ async function parseBody(req) {
 export async function GET(_req, { params }) {
   await connectDB();
   try {
-    const trainer = await Trainer.findById(params.id).populate({ path: "userId", select: "firstName lastName email" });
+    const { id } = await params;
+    const trainer = await Trainer.findById(id).populate({ path: "userId", select: "firstName lastName email" });
     if (!trainer) return NextResponse.json({ message: "Trainer not found" }, { status: 404 });
     return NextResponse.json(trainer, { status: 200 });
   } catch (error) {
@@ -92,8 +93,9 @@ export async function GET(_req, { params }) {
 export async function PUT(req, { params }) {
   await connectDB();
   try {
+    const { id } = await params;
     const body = await parseBody(req);
-    const { title, details, price, schedule, images, userId, Experience, status } = body || {};
+    const { title, details, location, coordinates, price, schedule, images, userId, Experience, status } = body || {};
 
     const normalizedSchedule = typeof schedule === "string" ? JSON.parse(schedule) : schedule;
 
@@ -101,6 +103,8 @@ export async function PUT(req, { params }) {
     if (userId !== undefined) update.userId = userId;
     if (title !== undefined) update.title = String(title).trim();
     if (details !== undefined) update.details = String(details).trim();
+    if (location !== undefined) update.location = String(location).trim();
+    if (coordinates !== undefined) update.coordinates = coordinates;
     if (price !== undefined) update.price = Number(price);
     if (normalizedSchedule !== undefined) {
       update.schedule = {
@@ -112,7 +116,7 @@ export async function PUT(req, { params }) {
     if (images !== undefined) update.images = Array.isArray(images) ? images : images ? [images] : [];
     if (Experience !== undefined) update.Experience = String(Experience).trim();
     if (status !== undefined) update.status = status;
-    const trainer = await Trainer.findByIdAndUpdate(params.id, update, { new: true, runValidators: true });
+    const trainer = await Trainer.findByIdAndUpdate(id, update, { new: true, runValidators: true });
     if (!trainer) return NextResponse.json({ message: "Trainer not found" }, { status: 404 });
     return NextResponse.json(trainer, { status: 200 });
   } catch (error) {
@@ -124,7 +128,8 @@ export async function PUT(req, { params }) {
 export async function DELETE(_req, { params }) {
   await connectDB();
   try {
-    const result = await Trainer.findByIdAndDelete(params.id);
+    const { id } = await params;
+    const result = await Trainer.findByIdAndDelete(id);
     if (!result) return NextResponse.json({ message: "Trainer not found" }, { status: 404 });
     return new NextResponse(null, { status: 204 });
   } catch (error) {

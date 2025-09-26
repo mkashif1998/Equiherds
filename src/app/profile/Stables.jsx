@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Edit, Trash, Plus, X } from "lucide-react";
 import { getRequest, postRequest, putRequest, deleteRequest, uploadFiles } from "@/service";
 import { getUserData } from "@/app/utils/localStorage";
+import LocationPicker from "../components/LocationPicker";
 
 function StarRating({ rating }) {
   const fullSta$ = Math.floor(rating);
@@ -40,6 +41,8 @@ export default function Stables() {
   const [form, setForm] = useState({
     title: "",
     details: "",
+    location: "",
+    coordinates: null,
     images: [],
     slots: [],
     priceRates: [],
@@ -61,6 +64,14 @@ export default function Stables() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleLocationChange = (coordinates) => {
+    setForm((prev) => ({ ...prev, coordinates }));
+  };
+
+  const handleLocationTextChange = (locationText) => {
+    setForm((prev) => ({ ...prev, location: locationText }));
   };
 
   const handleImageChange = (e) => {
@@ -131,7 +142,9 @@ export default function Stables() {
     e.preventDefault();
     if (
       !form.title ||
-      !form.details
+      !form.details ||
+      !form.location ||
+      !form.coordinates
     ) {
       return;
     }
@@ -165,6 +178,11 @@ export default function Stables() {
         userId,
         Tittle: String(form.title).trim(),
         Deatils: String(form.details).trim(),
+        location: String(form.location).trim(),
+        coordinates: form.coordinates ? {
+          lat: form.coordinates.lat,
+          lng: form.coordinates.lng
+        } : null,
         image: Array.isArray(uploadedImageUrls) ? uploadedImageUrls : [],
         Rating: undefined, // optional
         status: form.status || "active",
@@ -200,7 +218,7 @@ export default function Stables() {
       // Always refresh from server to avoid any local mismatches
       await loadStables();
 
-      setForm({ title: "", details: "", images: [], slots: [], priceRates: [], status: "active" });
+      setForm({ title: "", details: "", location: "", coordinates: null, images: [], slots: [], priceRates: [], status: "active" });
       setImagePreviews([]);
       setSlotInput({ day: "", startTime: "", endTime: "" });
       setPriceRateInput({ price: "", rateType: "" });
@@ -225,6 +243,8 @@ export default function Stables() {
     setForm({
       title: stable.title,
       details: stable.details,
+      location: stable.location || "",
+      coordinates: stable.coordinates || null,
       images: [],
       slots: stable.slots || [],
       priceRates: stable.priceRates || [],
@@ -243,11 +263,9 @@ export default function Stables() {
       setError("");
       const user = getUserData();
       const userId = user?.userId || user?._id || user?.id;
-      // Try path style fi$t; fallback to query style
-      let data = await getRequest(`/api/stables/${userId}`);
-      if (!Array.isArray(data)) {
-        data = await getRequest(`/api/stables?userId=${userId}`);
-      }
+      
+      // Only use the query parameter style to get stables by userId
+      let data = await getRequest(`/api/stables?userId=${userId}`);
       if (!Array.isArray(data)) data = [];
       const normalized = data.map((s) => {
         let priceRates = [];
@@ -267,6 +285,8 @@ export default function Stables() {
         id: s?._id || s?.id,
         title: s?.Tittle || s?.title || "",
         details: s?.Deatils || s?.details || "",
+        location: s?.Location || s?.location || "",
+        coordinates: s?.Coordinates || s?.coordinates || null,
         images: Array.isArray(s?.image) ? s.image : [],
         rating: typeof s?.Rating === "number" ? s.Rating : 0,
         // Derive display price from PriceRate if available
@@ -301,7 +321,7 @@ export default function Stables() {
           className="px-4 py-2 rounded bg-[color:var(--primary)] !text-white font-medium hover:bg-[color:var(--primary)]/90 transition cu$or-pointer"
           onClick={() => {
             setEditingId("");
-            setForm({ title: "", details: "", images: [], slots: [], priceRates: [], status: "active" });
+            setForm({ title: "", details: "", location: "", coordinates: null, images: [], slots: [], priceRates: [], status: "active" });
             setImagePreviews([]);
             setSlotInput({ day: "", startTime: "", endTime: "" });
             setPriceRateInput({ price: "", rateType: "" });
@@ -353,6 +373,15 @@ export default function Stables() {
             </div>
             <h3 className="text-lg font-semibold text-brand">{stable.title}</h3>
             <p className="text-sm text-brand/80 mb-2">{stable.details}</p>
+            {stable.location && (
+              <p className="text-sm text-brand/70 mb-2 flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                {stable.location}
+              </p>
+            )}
             <div className="flex items-center justify-between mb-2">
               <span className="text-brand font-bold text-base">
                 {stable.price ? `$ ${stable.price.toLocaleString()}` : ""}
@@ -417,7 +446,7 @@ export default function Stables() {
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={() => {
                 setShowModal(false);
-                setForm({ title: "", details: "", images: [], slots: [], priceRates: [], status: "active" });
+                setForm({ title: "", details: "", location: "", coordinates: null, images: [], slots: [], priceRates: [], status: "active" });
                 setImagePreviews([]);
                 setSlotInput({ day: "", startTime: "", endTime: "" });
                 setPriceRateInput({ price: "", rateType: "" });
@@ -451,6 +480,25 @@ export default function Stables() {
                   className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
                   rows={3}
                   required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-brand mb-1">Location</label>
+                <input
+                  type="text"
+                  name="location"
+                  value={form.location}
+                  onChange={handleInputChange}
+                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] mb-3"
+                  placeholder="Enter stable location (e.g., City, State, Address)"
+                  required
+                />
+                <LocationPicker
+                  onLocationChange={handleLocationChange}
+                  onLocationTextChange={handleLocationTextChange}
+                  initialLocation={form.coordinates}
+                  initialLocationText={form.location}
+                  height="250px"
                 />
               </div>
               <div>

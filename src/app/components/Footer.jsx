@@ -21,7 +21,7 @@ export default function Footer() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 text-[15px]">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <Image src="/logo2.png" className="gap-2" alt="Logo" width={130} height={130} />
+            <Image src="/logo2.png" className="" alt="Logo" width={130} height={130} />
             <p className="opacity-70 leading-relaxed max-w-xs">Building modern herd management experiences with care and technology.</p>
           </div>
 

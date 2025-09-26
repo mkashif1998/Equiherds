@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopSection from "../components/topSection";
 // Child components fetch their own data
@@ -13,7 +13,7 @@ import StableList from "../components/services/stable";
 
 // Note: metadata must be exported from a Server Component. Removed here because this is a Client Component.
 
-export default function ServicesPage() {
+function ServicesContent() {
   const searchParams = useSearchParams();
   const type = (searchParams.get("type") || "trainer").toLowerCase();
 
@@ -34,5 +34,13 @@ export default function ServicesPage() {
         <div>{type === "stables" ? <StableList /> : <TrainerList />}</div>
       </section>
     </div>
+  );
+}
+
+export default function ServicesPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <ServicesContent />
+    </Suspense>
   );
 }

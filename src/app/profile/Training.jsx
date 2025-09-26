@@ -5,6 +5,7 @@ import { Edit, Trash, Plus, X } from "lucide-react";
 import { getUserData } from "../utils/localStorage";
 import { postRequest, uploadFiles, deleteRequest, putRequest } from "@/service";
 import { toast } from "react-hot-toast";
+import LocationPicker from "../components/LocationPicker";
 
 const dummyStables = [];
 
@@ -43,6 +44,8 @@ export default function Trainer() {
   const [form, setForm] = useState({
     title: "",
     details: "",
+    location: "",
+    coordinates: null,
     price: "",
     Experience: "",
     images: [],
@@ -67,6 +70,14 @@ export default function Trainer() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleLocationChange = (coordinates) => {
+    setForm((prev) => ({ ...prev, coordinates }));
+  };
+
+  const handleLocationTextChange = (locationText) => {
+    setForm((prev) => ({ ...prev, location: locationText }));
+  };
+
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
     setForm((prev) => ({ ...prev, images: files }));
@@ -75,7 +86,7 @@ export default function Trainer() {
 
   const handleAddStable = async (e) => {
     e.preventDefault();
-    if (!form.title || !form.details || !form.price) return;
+    if (!form.title || !form.details || !form.location || !form.coordinates || !form.price) return;
 
     const tokenData = getUserData();
     const userId = tokenData?.id || tokenData?.sub || tokenData?._id || null;
@@ -117,6 +128,11 @@ export default function Trainer() {
         userId,
         title: form.title,
         details: form.details,
+        location: form.location,
+        coordinates: form.coordinates ? {
+          lat: form.coordinates.lat,
+          lng: form.coordinates.lng
+        } : null,
         price: Number(form.price),
         Experience: form.Experience, // Experience is already included here
         status: form.status || "active",
@@ -166,7 +182,7 @@ export default function Trainer() {
       }
 
       setEditingId(null);
-      setForm({ title: "", details: "", price: "", Experience: "", images: [], slots: [], status: "active" });
+      setForm({ title: "", details: "", location: "", coordinates: null, price: "", Experience: "", images: [], slots: [], status: "active" });
       setImagePreviews([]);
       setSlotInput({ day: "", startTime: "", endTime: "" });
       setPrevImages([]);
@@ -206,6 +222,8 @@ export default function Trainer() {
     setForm({
       title: stable.title,
       details: stable.details,
+      location: stable.location || "",
+      coordinates: stable.coordinates || null,
       price: stable.price,
       Experience: stable.Experience || "",
       images: [],
@@ -327,6 +345,15 @@ export default function Trainer() {
             </div>
             <h3 className="text-lg font-semibold text-brand">{stable.title}</h3>
             <p className="text-sm text-brand/80 mb-2">{stable.details}</p>
+            {stable.location && (
+              <p className="text-sm text-brand/70 mb-2 flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                {stable.location}
+              </p>
+            )}
             {stable.Experience && (
               <p className="text-xs text-brand/70 mb-2">
                 <span className="font-semibold">Experience:</span> {stable.Experience}
@@ -383,7 +410,7 @@ export default function Trainer() {
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={() => {
                 setShowModal(false);
-                setForm({ title: "", details: "", price: "", Experience: "", images: [], slots: [], status: "active" });
+                setForm({ title: "", details: "", location: "", coordinates: null, price: "", Experience: "", images: [], slots: [], status: "active" });
                 setImagePreviews([]);
                 setSlotInput({ day: "", startTime: "", endTime: "" });
                 setPrevImages([]);
@@ -416,6 +443,24 @@ export default function Trainer() {
                   className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)]"
                   rows={3}
                   required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-brand mb-1">Location</label>
+                <input
+                  type="text"
+                  name="location"
+                  value={form.location}
+                  onChange={handleInputChange}
+                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] mb-3"
+                  placeholder="Enter trainer location (e.g., City, State, Address)"
+                  required
+                />
+                <LocationPicker
+                  onLocationChange={handleLocationChange}
+                  onLocationTextChange={handleLocationTextChange}
+                  initialLocation={form.coordinates}
+                  height="250px"
                 />
               </div>
               <div>
