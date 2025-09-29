@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { postRequest, uploadFile } from "@/service";
 import TopSection from "../components/topSection";
+import OTPModal from "../components/OTPModal";
 
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState("login");
@@ -28,6 +29,11 @@ export default function LoginPage() {
   const [showRegConfirm, setShowRegConfirm] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
+  // OTP verification state
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [pendingRegistrationData, setPendingRegistrationData] = useState(null);
+
   const isSeller = useMemo(() => accountType === "Seller", [accountType]);
 
   const inputClass =
@@ -41,6 +47,145 @@ export default function LoginPage() {
   function handleBrandImageChange(e) {
     const file = e.target.files?.[0] ?? null;
     setBrandImage(file);
+  }
+
+  // OTP verification functions
+  async function sendOTP(email) {
+    try {
+      const response = await fetch("https://equiherds-smtp.vercel.app/api/auth/forgot-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send OTP");
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw new Error(error.message || "Failed to send OTP");
+    }
+  }
+
+  async function verifyOTP(email, otp) {
+    try {
+      const response = await fetch("https://equiherds-smtp.vercel.app/api/auth/verify-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, otp }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Invalid OTP");
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw new Error(error.message || "OTP verification failed");
+    }
+  }
+
+  async function handleOTPVerify(otp) {
+    if (!pendingRegistrationData) return;
+
+    setOtpLoading(true);
+    try {
+      const result = await verifyOTP(pendingRegistrationData.email, otp);
+      
+      if (result.message === "OTP verified successfully") {
+        toast.success("Email verified successfully!");
+        // Proceed with account creation
+        await createAccount(pendingRegistrationData);
+        setShowOTPModal(false);
+        setPendingRegistrationData(null);
+      } else {
+        toast.error("Invalid OTP. Please try again.");
+      }
+    } catch (error) {
+      toast.error(error.message || "OTP verification failed");
+    } finally {
+      setOtpLoading(false);
+    }
+  }
+
+  async function handleOTPResend() {
+    if (!pendingRegistrationData) return;
+
+    setOtpLoading(true);
+    try {
+      await sendOTP(pendingRegistrationData.email);
+      toast.success("OTP sent successfully!");
+    } catch (error) {
+      toast.error(error.message || "Failed to resend OTP");
+    } finally {
+      setOtpLoading(false);
+    }
+  }
+
+  async function createAccount(registrationData) {
+    try {
+      const mappedAccountType = registrationData.accountType.toLowerCase();
+
+      let brandImageUrl;
+      if (registrationData.isSeller && registrationData.brandImage) {
+        if (typeof registrationData.brandImage === 'string') {
+          brandImageUrl = registrationData.brandImage;
+        } else {
+          try {
+            brandImageUrl = await uploadFile(registrationData.brandImage);
+          } catch (err) {
+            toast.error(err?.message || "Image upload failed");
+            return;
+          }
+        }
+      }
+
+      const payload = {
+        firstName: registrationData.firstName,
+        lastName: registrationData.lastName,
+        email: registrationData.email,
+        accountType: mappedAccountType,
+        phoneNumber: registrationData.phoneNumber,
+        password: registrationData.password,
+        status: "active",
+      };
+
+      // Only add optional fields if they have values
+      if (registrationData.isSeller && registrationData.companyName) {
+        payload.companyName = registrationData.companyName;
+      }
+      if (registrationData.isSeller && brandImageUrl) {
+        payload.brandImage = brandImageUrl;
+      }
+      if (registrationData.isSeller && registrationData.companyInfo) {
+        payload.companyInfo = registrationData.companyInfo;
+      }
+      const res = await postRequest("/api/users", payload);
+      if (res && res.user) {
+        toast.success(res.message || "Account created successfully!");
+        setActiveTab("login");
+        // Reset form
+        setFirstName("");
+        setLastName("");
+        setRegisterEmail("");
+        setAccountType("Buyer");
+        setPhoneNumber("");
+        setCompanyName("");
+        setBrandImage(null);
+        setCompanyInfo("");
+        setPassword("");
+        setConfirmPassword("");
+      } else {
+        toast.error(res?.message || "Failed to create account");
+      }
+    } catch (err) {
+      toast.error(err.message || "Failed to create account");
+    }
   }
 
   async function handleLoginSubmit(e) {
@@ -70,43 +215,31 @@ export default function LoginPage() {
       toast.error("Passwords do not match");
       return;
     }
+
+    // Store registration data for later use
+    const registrationData = {
+      firstName,
+      lastName,
+      email: registerEmail,
+      accountType,
+      phoneNumber,
+      companyName,
+      brandImage,
+      companyInfo,
+      password,
+      isSeller,
+    };
+
+    setPendingRegistrationData(registrationData);
+
     try {
-      const mappedAccountType = accountType.toLowerCase();
-
-      let brandImageUrl;
-      if (isSeller && brandImage) {
-        if (typeof brandImage === 'string') {
-          brandImageUrl = brandImage;
-        } else {
-          try {
-            brandImageUrl = await uploadFile(brandImage);
-          } catch (err) {
-            toast.error(err?.message || "Image upload failed");
-            return;
-          }
-        }
-      }
-
-      const payload = {
-        firstName,
-        lastName,
-        email: registerEmail,
-        accountType: mappedAccountType,
-        phoneNumber,
-        companyName: isSeller ? companyName : undefined,
-        brandImage: isSeller ? brandImageUrl || undefined : undefined,
-        companyInfo: isSeller ? companyInfo : undefined,
-        password,
-      };
-      const res = await postRequest("/api/users", payload);
-      if (res && res.user) {
-        toast.success(res.message || "User created successfully");
-        setActiveTab("login");
-      } else {
-        toast.error(res?.message || "Failed to create account");
-      }
-    } catch (err) {
-      toast.error(err.message || "Failed to create account");
+      // Send OTP first
+      await sendOTP(registerEmail);
+      toast.success("OTP sent to your email. Please check your inbox.");
+      setShowOTPModal(true);
+    } catch (error) {
+      toast.error(error.message || "Failed to send OTP");
+      setPendingRegistrationData(null);
     }
   }
 
@@ -356,6 +489,19 @@ export default function LoginPage() {
           </div>
         </div>
       </section>
+
+      {/* OTP Verification Modal */}
+      <OTPModal
+        isOpen={showOTPModal}
+        onClose={() => {
+          setShowOTPModal(false);
+          setPendingRegistrationData(null);
+        }}
+        email={pendingRegistrationData?.email || ""}
+        onVerify={handleOTPVerify}
+        onResend={handleOTPResend}
+        isLoading={otpLoading}
+      />
     </div>
   );
 }

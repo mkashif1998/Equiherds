@@ -193,6 +193,7 @@ export async function POST(req) {
   await connectDB();
   try {
     const body = await parseRequestBody(req);
+    console.log("Received body in API:", body); // Debug log
     const user = new User(body);
     await user.save();
     const safeUser = user.toJSON();
@@ -201,6 +202,7 @@ export async function POST(req) {
       { status: 200 }
     );
   } catch (error) {
+    console.log("Error creating user:", error); // Debug log
     return NextResponse.json(
       { message: error.message || "Failed to create user" },
       { status: 400 }

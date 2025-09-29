@@ -20,6 +20,9 @@ export const getRequest = async (url) => {
 
 export const postRequest = async (url, data) => {
     const authToken = getToken();
+    console.log("postRequest - URL:", url); // Debug log
+    console.log("postRequest - Data:", JSON.stringify(data, null, 2)); // Debug log
+    console.log("postRequest - Stringified body:", JSON.stringify(data)); // Debug log
     const response = await fetch(`${baseUrl}${url}`, {
         method: "POST",
         headers: {
