@@ -32,7 +32,67 @@
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/TrainerInput'
+ *             type: object
+ *             required:
+ *               - userId
+ *               - title
+ *               - details
+ *               - price
+ *               - schedule
+ *               - experience
+ *               - location
+ *               - coordinates
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: User ID who owns this trainer profile
+ *               title:
+ *                 type: string
+ *                 description: Trainer title/name
+ *               details:
+ *                 type: string
+ *                 description: Trainer details/description
+ *               price:
+ *                 type: number
+ *                 description: Training price
+ *               schedule:
+ *                 type: object
+ *                 required:
+ *                   - day
+ *                   - startTime
+ *                   - endTime
+ *                 properties:
+ *                   day:
+ *                     type: string
+ *                   startTime:
+ *                     type: string
+ *                   endTime:
+ *                     type: string
+ *               experience:
+ *                 type: string
+ *                 description: Trainer experience
+ *               location:
+ *                 type: string
+ *                 description: Trainer location
+ *               coordinates:
+ *                 type: object
+ *                 required:
+ *                   - lat
+ *                   - lng
+ *                 properties:
+ *                   lat:
+ *                     type: number
+ *                   lng:
+ *                     type: number
+ *               images:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of image URLs
+ *               status:
+ *                 type: string
+ *                 default: active
+ *                 enum: [active, inactive]
  *     responses:
  *       201:
  *         description: Trainer created
@@ -80,14 +140,42 @@ export async function POST(req) {
   await connectDB();
   try {
     const body = await parseBody(req);
-    const { userId, title, details, price, schedule, images, experience, status } = body || {};
+    const { 
+      userId, 
+      title, 
+      details, 
+      price, 
+      schedule, 
+      images, 
+      experience, 
+      status, 
+      location, 
+      coordinates 
+    } = body || {};
 
-    if (!userId || !title || !details || price === undefined || !schedule) {
-      return NextResponse.json({ message: "userId, title, details, price, schedule are required" }, { status: 400 });
+    // Validate all required fields according to schema
+    if (!userId || !title || !details ) {
+      return NextResponse.json({ 
+        message: "userId, title, details, price, schedule, experience, location, and coordinates are required" 
+      }, { status: 400 });
+    }
+
+    // Validate coordinates structure
+    if (!coordinates.lat || !coordinates.lng) {
+      return NextResponse.json({ 
+        message: "coordinates must have lat and lng properties" 
+      }, { status: 400 });
     }
 
     // If schedule is coming as JSON string, parse it
     const normalizedSchedule = typeof schedule === "string" ? JSON.parse(schedule) : schedule;
+
+    // Validate schedule structure
+    if (!normalizedSchedule?.day || !normalizedSchedule?.startTime || !normalizedSchedule?.endTime) {
+      return NextResponse.json({ 
+        message: "schedule must have day, startTime, and endTime properties" 
+      }, { status: 400 });
+    }
 
     const trainer = await Trainer.create({
       userId,
@@ -95,17 +183,29 @@ export async function POST(req) {
       details: String(details).trim(),
       price: Number(price),
       schedule: {
-        day: normalizedSchedule?.day,
-        startTime: normalizedSchedule?.startTime,
-        endTime: normalizedSchedule?.endTime,
+        day: String(normalizedSchedule.day).trim(),
+        startTime: String(normalizedSchedule.startTime).trim(),
+        endTime: String(normalizedSchedule.endTime).trim(),
       },
       Experience: String(experience).trim(),
+      location: String(location).trim(),
+      coordinates: {
+        lat: Number(coordinates.lat),
+        lng: Number(coordinates.lng)
+      },
       status: status || "active",
-      images: Array.isArray(images) ? images : images ? [images] : [],
+      images: Array.isArray(images) ? images.filter(img => img && img.trim()) : images ? [String(images).trim()] : [],
     });
 
-    return NextResponse.json(trainer, { status: 201 });
+    // Populate the userId field before returning
+    const populatedTrainer = await Trainer.findById(trainer._id).populate({ 
+      path: "userId", 
+      select: "firstName lastName email" 
+    });
+
+    return NextResponse.json(populatedTrainer, { status: 201 });
   } catch (error) {
+    console.error('Trainer creation error:', error);
     const message = error?.message || "Failed to create trainer";
     return NextResponse.json({ message }, { status: 400 });
   }

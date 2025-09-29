@@ -65,6 +65,11 @@ export default function Trainer() {
   const [prevImages, setPrevImages] = useState([]);
   console.log("editingId", editingId);
 
+  // Debug: Log form state changes
+  useEffect(() => {
+    console.log("Form state changed:", form);
+  }, [form]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -171,7 +176,7 @@ export default function Trainer() {
           title: payload.title,
           details: payload.details,
           price: payload.price,
-          Experience: payload.Experience,
+          experience: payload.Experience,
           status: payload.status,
           rating: 0,
           images: uploadedUrls,
@@ -219,18 +224,19 @@ export default function Trainer() {
 
   // For simplicity, edit just fills the form and removes the old one
   const handleEdit = (stable) => {
+    console.log("Editing stable data:", stable); // Debug log
     setForm({
-      title: stable.title,
-      details: stable.details,
+      title: stable.title || "",
+      details: stable.details || "",
       location: stable.location || "",
       coordinates: stable.coordinates || null,
-      price: stable.price,
+      price: stable.price || "",
       Experience: stable.Experience || "",
       images: [],
       slots: stable.slots || [],
       status: stable.status || "active",
     });
-    setImagePreviews(stable.images);
+    setImagePreviews(stable.images || []);
     setPrevImages(stable.images || []);
     setSlotInput({ day: "", startTime: "", endTime: "" });
     setEditingId(stable.id);
@@ -252,6 +258,8 @@ export default function Trainer() {
             id: t._id,
             title: t.title,
             details: t.details,
+            location: t.location || "",
+            coordinates: t.coordinates || null,
             price: t.price,
             Experience: t.Experience || "",
             status: t.status || "active",
@@ -259,6 +267,7 @@ export default function Trainer() {
             images: Array.isArray(t.images) ? t.images : [],
             slots: t.schedule ? [t.schedule] : [],
           }));
+          console.log("Mapped trainer data:", mapped); // Debug log
           setStables(mapped);
         }
       } catch (e) {
@@ -460,6 +469,7 @@ export default function Trainer() {
                   onLocationChange={handleLocationChange}
                   onLocationTextChange={handleLocationTextChange}
                   initialLocation={form.coordinates}
+                  initialLocationText={form.location}
                   height="250px"
                 />
               </div>

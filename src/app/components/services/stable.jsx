@@ -59,6 +59,8 @@ export default function StableList() {
             priceRates,
             images,
             image: images[0], // Keep first image for card display
+            location: String(d?.location || ""),
+            coordinates: d?.coordinates || null,
             userId: d?.userId || null,
             // Handle populated user data
             ownerName: d?.userId ? `${d.userId.firstName || ''} ${d.userId.lastName || ''}`.trim() : '',
@@ -99,7 +101,9 @@ export default function StableList() {
     const term = search.trim().toLowerCase();
     return items.filter((s) => {
       const matchesSearch = term
-        ? (s.title || "").toLowerCase().includes(term) || (s.details || "").toLowerCase().includes(term)
+        ? (s.title || "").toLowerCase().includes(term) || 
+          (s.details || "").toLowerCase().includes(term) || 
+          (s.location || "").toLowerCase().includes(term)
         : true;
       const matchesRating = Number(s.rating || 0) >= minRating;
       const price = Number(s.price || 0);
@@ -224,7 +228,7 @@ export default function StableList() {
         {error && (<div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>)}
         {loading && (<div className="mb-4 text-sm text-gray-500">Loading stables...</div>)}
 
-        <div className="grid grid-cols-1 items-stretch gap-6 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((svc) => (
             <article key={svc.id} className="group flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md cursor-pointer" onClick={() => handleStableClick(svc)}>
               <div className="relative aspect-[4/3] w-full overflow-hidden">
@@ -233,7 +237,17 @@ export default function StableList() {
               <div className="flex flex-1 flex-col space-y-3 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="text-base font-semibold text-brand">{svc.title}</h3>
-                  <span className="shrink-0 rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">${svc.price}</span>
+                  <div className="flex flex-wrap gap-1">
+                    {Array.isArray(svc.priceRates) && svc.priceRates.length > 0 ? (
+                      svc.priceRates.slice(0, 2).map((pr, idx) => (
+                        <span key={idx} className="shrink-0 rounded-full bg-brand/10 px-2 py-1 text-xs font-semibold text-brand border border-brand/20">
+                          ${pr.price}{pr.rateType ? `/${pr.rateType}` : ''}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="shrink-0 rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand border border-brand/20">${svc.price}</span>
+                    )}
+                  </div>
                 </div>
                 <p className="text-sm text-gray-600">{svc.details}</p>
                 <Rating value={Number(svc.rating || 0)} />
@@ -362,20 +376,7 @@ export default function StableList() {
               {/* Content Section */}
               <div className="lg:w-1/3 p-6 overflow-y-auto max-h-[400px] lg:max-h-[500px]">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-lg font-semibold text-gray-800">Price</h4>
-                    <div className="text-right">
-                      {Array.isArray(selectedStable.priceRates) && selectedStable.priceRates.length > 0 ? (
-                        selectedStable.priceRates.map((pr, idx) => (
-                          <p key={idx} className="text-lg font-bold text-brand">
-                            ${pr.price}{pr.rateType ? `/${pr.rateType}` : ''}
-                          </p>
-                        ))
-                      ) : (
-                        <p className="text-lg font-bold text-brand">${selectedStable.price}</p>
-                      )}
-                    </div>
-                  </div>
+                  
 
                   <div>
                     <h4 className="text-sm font-semibold text-gray-800 mb-2">Description</h4>
@@ -383,6 +384,13 @@ export default function StableList() {
                       {selectedStable.details}
                     </p>
                   </div>
+
+                  {selectedStable.location && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-2">Location</h4>
+                      <p className="text-gray-600 text-sm">{selectedStable.location}</p>
+                    </div>
+                  )}
 
                   {Array.isArray(selectedStable.slots) && selectedStable.slots.length > 0 && (
                     <div>
@@ -397,10 +405,40 @@ export default function StableList() {
                       </div>
                     </div>
                   )}
-
+<div>
+                    <h4 className="text-lg font-semibold text-gray-800 mb-3">Pricing</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {Array.isArray(selectedStable.priceRates) && selectedStable.priceRates.length > 0 ? (
+                        selectedStable.priceRates.map((pr, idx) => (
+                          <span key={idx} className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold bg-brand/10 text-brand border border-brand/20">
+                            ${pr.price}{pr.rateType ? `/${pr.rateType}` : ''}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold bg-brand/10 text-brand border border-brand/20">
+                          ${selectedStable.price}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   <div className="pt-4 border-t border-gray-200">
                     <div className="flex flex-col gap-3">
                       <button 
+                        onClick={() => {
+                          const bookingData = {
+                            stableId: selectedStable.id,
+                            title: selectedStable.title,
+                            price: selectedStable.price,
+                            priceRates: JSON.stringify(selectedStable.priceRates || []),
+                            images: JSON.stringify(selectedStable.images || []),
+                            details: selectedStable.details,
+                            slots: JSON.stringify(selectedStable.slots || []),
+                            ownerName: selectedStable.ownerName,
+                            ownerEmail: selectedStable.ownerEmail
+                          };
+                          const params = new URLSearchParams(bookingData);
+                          window.location.href = `/bookingStables?${params.toString()}`;
+                        }}
                         className="w-full px-6 py-3 bg-brand text-white rounded-lg hover:bg-brand/90 transition-colors duration-200 font-medium"
                       >
                         Book Stable

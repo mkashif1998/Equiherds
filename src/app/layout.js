@@ -3,6 +3,11 @@ import "./globals.css";
 import "antd/dist/reset.css";
 import { Toaster } from "react-hot-toast";
 import AppShell from "./components/AppShell";
+import { ConfigProvider, App } from "antd";
+import { antdTheme, suppressAntdWarnings } from "../lib/antd-theme";
+import AntdWarningBoundary from "../lib/error-boundary";
+import "../lib/suppress-warnings"; 
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,13 +25,22 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  // Suppress Ant Design warnings
+  suppressAntdWarnings();
+
   return (
     <html lang="en">
       <body suppressHydrationWarning={true} className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}>
-        <AppShell>
-          {children}
-        </AppShell>
-        <Toaster position="top-right" />
+        <AntdWarningBoundary>
+          <ConfigProvider theme={antdTheme}>
+            <App>
+              <AppShell>
+                {children}
+              </AppShell>
+              <Toaster position="top-right" />
+            </App>
+          </ConfigProvider>
+        </AntdWarningBoundary>
       </body>
     </html>
   );

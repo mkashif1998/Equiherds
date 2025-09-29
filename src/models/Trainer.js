@@ -6,6 +6,11 @@ const scheduleSchema = new mongoose.Schema({
   endTime: { type: String, required: true }
 }, { _id: false });
 
+const coordinatesSchema = new mongoose.Schema({
+  lat: { type: Number, required: true },
+  lng: { type: Number, required: true }
+}, { _id: false });
+
 const trainerSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   title: { type: String, required: true },
@@ -15,6 +20,8 @@ const trainerSchema = new mongoose.Schema({
   Experience: { type: String, required: true },
   Rating: { type: Number, required: false },
   status: { type: String, required: true, default: "active" },
+  location: { type: String, required: true },
+  coordinates: { type: coordinatesSchema, required: true },
   images: [{ type: String }]
 }, {
   timestamps: true

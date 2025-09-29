@@ -533,7 +533,6 @@ export default function Stables() {
                     className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] flex-1 min-w-0"
                   >
                     <option value="">Select Rate</option>
-                    <option value="hour">Hour</option>
                     <option value="day">Day</option>
                     <option value="week">Week</option>
                     <option value="month">Month</option>
