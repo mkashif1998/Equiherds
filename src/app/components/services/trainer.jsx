@@ -232,7 +232,7 @@ export default function TrainerList() {
         {error && (<div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>)}
         {loading && (<div className="mb-4 text-sm text-gray-500">Loading trainer...</div>)}
 
-        <div className="grid grid-cols-1 items-stretch gap-6 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((svc) => (
             <article key={svc.id} className="group flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md cursor-pointer" onClick={() => handleTrainerClick(svc)}>
               <div className="relative aspect-[4/3] w-full overflow-hidden">

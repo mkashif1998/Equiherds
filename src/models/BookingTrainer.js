@@ -12,9 +12,9 @@ const bookingStablesSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    stableId: {
+    trainerId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Stable",
+      ref: "Trainer",
       required: true,
     },
     bookingDate: {
@@ -33,11 +33,6 @@ const bookingStablesSchema = new mongoose.Schema(
     endDate: {
       type: Date,
       required: false,
-    },
-    numberOfHorses: {
-      type: Number,
-      required: true,
-      min: 1,
     },
     price: {
       type: Number,
