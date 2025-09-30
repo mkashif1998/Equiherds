@@ -23,6 +23,7 @@ const stableSchema = new mongoose.Schema({
   Rating: { type: Number, required: false },
   location: { type: String, required: true },
   coordinates: { type: coordinatesSchema, required: true },
+  noofRatingCustomers: { type: Number, required: false },
   PriceRate: [priceRateSchema],
   Slotes: [slotSchema],
   status: { type: String, required: true, default: "active" }

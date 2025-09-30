@@ -36,7 +36,7 @@ export default function Footer() {
                 const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
                 return (
                   <li key={href}>
-                    <Link href={href} className={`hover:underline underline-offset-4 ${isActive ? "[color:var(--secondary)] underline" : "text-white/80 hover:[color:var(--secondary)]"}`}>{label}</Link>
+                    <Link href={href} className={`text-white hover:underline underline-offset-4 ${isActive ? "[color:var(--secondary)] underline" : "text-white/80 hover:[color:var(--secondary)]"}`}>{label}</Link>
                   </li>
                 );
               })}
@@ -54,7 +54,7 @@ export default function Footer() {
                 const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
                 return (
                   <li key={href}>
-                    <Link href={href} className={`hover:underline underline-offset-4 ${isActive ? "[color:var(--secondary)] underline" : "text-white/80 hover:[color:var(--secondary)]"}`}>{label}</Link>
+                    <Link href={href} className={`text-white hover:underline underline-offset-4 ${isActive ? "[color:var(--secondary)] underline" : "text-white/80 hover:[color:var(--secondary)]"}`}>{label}</Link>
                   </li>
                 );
               })}

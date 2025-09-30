@@ -97,6 +97,7 @@ export async function POST(req) {
       coordinates: coordinates || null,
       image: Array.isArray(image) ? image : image ? [image] : [],
       Rating: Rating === undefined ? undefined : Number(Rating),
+      noofRatingCustomers: noofRatingCustomers === undefined ? undefined : Number(noofRatingCustomers),
       status: status || "active",
       PriceRate: Array.isArray(normalizedPriceRate)
         ? normalizedPriceRate.map(s => ({

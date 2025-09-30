@@ -19,6 +19,7 @@ const trainerSchema = new mongoose.Schema({
   schedule: { type: scheduleSchema, required: true },
   Experience: { type: String, required: true },
   Rating: { type: Number, required: false },
+  noofRatingCustomers: { type: Number, required: false },
   status: { type: String, required: true, default: "active" },
   location: { type: String, required: true },
   coordinates: { type: coordinatesSchema, required: true },

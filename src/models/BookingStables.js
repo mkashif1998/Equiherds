@@ -7,6 +7,11 @@ const bookingStablesSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    clientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     stableId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Stable",

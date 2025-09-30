@@ -425,19 +425,7 @@ export default function StableList() {
                     <div className="flex flex-col gap-3">
                       <button 
                         onClick={() => {
-                          const bookingData = {
-                            stableId: selectedStable.id,
-                            title: selectedStable.title,
-                            price: selectedStable.price,
-                            priceRates: JSON.stringify(selectedStable.priceRates || []),
-                            images: JSON.stringify(selectedStable.images || []),
-                            details: selectedStable.details,
-                            slots: JSON.stringify(selectedStable.slots || []),
-                            ownerName: selectedStable.ownerName,
-                            ownerEmail: selectedStable.ownerEmail
-                          };
-                          const params = new URLSearchParams(bookingData);
-                          window.location.href = `/bookingStables?${params.toString()}`;
+                          window.location.href = `/bookingStables?stableId=${selectedStable.id}`;
                         }}
                         className="w-full px-6 py-3 bg-brand text-white rounded-lg hover:bg-brand/90 transition-colors duration-200 font-medium"
                       >

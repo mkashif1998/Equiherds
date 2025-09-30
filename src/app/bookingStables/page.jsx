@@ -2,12 +2,12 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { DatePicker, Form, Button, Card, Row, Col, TimePicker, Select, App } from "antd";
+import { DatePicker, Form, Button, Card, Row, Col, TimePicker, Select, App, Tag, Spin, Alert } from "antd";
 import dayjs from "dayjs";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import TopSection from "../components/topSection";
-import { postRequest } from "@/service";
+import { postRequest, getRequest } from "@/service";
 import { getUserData } from "../utils/localStorage";
 
 // Extend dayjs with required plugins
@@ -17,72 +17,101 @@ dayjs.extend(isSameOrAfter);
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 
-// Separate component for handling search params
-function BookingStablesContent() {
+// Main export function with Suspense boundary
+export default function BookingStablesPage() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [selectedStable, setSelectedStable] = useState(null);
   const [bookingType, setBookingType] = useState(null); // 'day' or 'week'
   const [selectedDateRange, setSelectedDateRange] = useState(null);
+  const [bookingAvailability, setBookingAvailability] = useState([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState(null);
   const searchParams = useSearchParams();
   const { notification } = App.useApp();
 
-  // Read URL parameters and set selected stable data
+  // Fetch stable data and set selected stable
   useEffect(() => {
-    if (searchParams) {
-      try {
-        const stableData = {
-          stableId: searchParams.get('stableId'),
-          title: searchParams.get('title'),
-          price: searchParams.get('price'),
-          priceRates: null,
-          images: null,
-          details: searchParams.get('details'),
-          slots: null,
-          ownerName: searchParams.get('ownerName'),
-          ownerEmail: searchParams.get('ownerEmail')
-        };
-
-        // Safely parse JSON parameters
-        const priceRatesParam = searchParams.get('priceRates');
-        if (priceRatesParam && priceRatesParam !== 'null') {
+    const fetchStableData = async () => {
+      if (searchParams) {
+        const stableId = searchParams.get('stableId');
+        if (stableId) {
           try {
-            stableData.priceRates = JSON.parse(priceRatesParam);
-          } catch (e) {
-            console.warn('Failed to parse priceRates:', e);
-            stableData.priceRates = [];
+            setLoading(true);
+            const response = await getRequest(`/api/stables/${stableId}`);
+            
+            if (response && response._id) {
+              // Normalize the API response data
+              const normalizedData = {
+                stableId: response._id,
+                title: response.Tittle || "Untitled Stable",
+                details: response.Deatils || "",
+                rating: response.Rating || 0,
+                images: Array.isArray(response.image) && response.image.length > 0 ? response.image : ["/product/1.jpg"],
+                location: response.location || "",
+                coordinates: response.coordinates || null,
+                userId: response.userId || null,
+                ownerName: response.userId ? `${response.userId.firstName || ''} ${response.userId.lastName || ''}`.trim() : '',
+                ownerEmail: response.userId?.email || '',
+                slots: Array.isArray(response.Slotes)
+                  ? response.Slotes.map((sl) => ({ 
+                      date: sl?.date || '', 
+                      startTime: sl?.startTime || '', 
+                      endTime: sl?.endTime || '' 
+                    }))
+                  : [],
+                status: response.status || "active",
+                // Handle PriceRate - can be array or object
+                priceRates: [],
+                price: 0
+              };
+
+              // Handle PriceRate - can be array or object
+              if (Array.isArray(response.PriceRate) && response.PriceRate.length > 0) {
+                normalizedData.priceRates = response.PriceRate
+                  .filter((pr) => typeof pr?.PriceRate === "number" && pr.PriceRate > 0 && pr.RateType)
+                  .map((pr) => ({
+                    price: pr.PriceRate,
+                    rateType: pr.RateType,
+                  }));
+              } else if (typeof response.PriceRate === "object" && response.PriceRate !== null) {
+                if (typeof response.PriceRate.PriceRate === "number" && response.PriceRate.PriceRate > 0 && response.PriceRate.RateType) {
+                  normalizedData.priceRates = [{
+                    price: response.PriceRate.PriceRate,
+                    rateType: response.PriceRate.RateType,
+                  }];
+                }
+              }
+              
+              // Set price as first entry if available
+              normalizedData.price = normalizedData.priceRates.length > 0 ? normalizedData.priceRates[0].price : 0;
+
+              setSelectedStable(normalizedData);
+              // Fetch booking availability for this stable
+              fetchBookingAvailability(stableId);
+            } else {
+              notification.error({
+                message: 'Stable Not Found',
+                description: 'The requested stable could not be found',
+                placement: 'topRight',
+              });
+            }
+          } catch (error) {
+            console.error('Error fetching stable data:', error);
+            notification.error({
+              message: 'Error Loading Stable',
+              description: 'Failed to load stable information',
+              placement: 'topRight',
+            });
+          } finally {
+            setLoading(false);
           }
         }
-
-        const imagesParam = searchParams.get('images');
-        if (imagesParam && imagesParam !== 'null') {
-          try {
-            stableData.images = JSON.parse(imagesParam);
-          } catch (e) {
-            console.warn('Failed to parse images:', e);
-            stableData.images = [];
-          }
-        }
-
-        const slotsParam = searchParams.get('slots');
-        if (slotsParam && slotsParam !== 'null') {
-          try {
-            stableData.slots = JSON.parse(slotsParam);
-          } catch (e) {
-            console.warn('Failed to parse slots:', e);
-            stableData.slots = [];
-          }
-        }
-        
-        // Only set if we have at least a stableId
-        if (stableData.stableId) {
-          setSelectedStable(stableData);
-        }
-      } catch (error) {
-        console.error('Error parsing URL parameters:', error);
       }
-    }
-  }, [searchParams, form]);
+    };
+
+    fetchStableData();
+  }, [searchParams, notification]);
 
   // Handle booking type selection
   const handleBookingTypeChange = (type) => {
@@ -93,6 +122,50 @@ function BookingStablesContent() {
   // Handle date range selection
   const handleDateRangeChange = (dates) => {
     setSelectedDateRange(dates);
+    // Fetch availability for the selected date range (with 15 days buffer)
+    if (dates && dates.length === 2 && selectedStable?.stableId) {
+      fetchBookingAvailability(selectedStable.stableId, dates);
+    }
+  };
+
+  // Fetch booking availability for the selected stable
+  const fetchBookingAvailability = async (stableId, userDateRange = null) => {
+    if (!stableId) return;
+    
+    setAvailabilityLoading(true);
+    setAvailabilityError(null);
+    
+    try {
+      let startDate, endDate;
+      
+      if (userDateRange && userDateRange.length === 2) {
+        // Use user's selected date range and extend it by 15 days before and after
+        const userStart = dayjs(userDateRange[0]);
+        const userEnd = dayjs(userDateRange[1]);
+        
+        startDate = userStart.subtract(15, 'days').format('YYYY-MM-DD');
+        endDate = userEnd.add(15, 'days').format('YYYY-MM-DD');
+      } else {
+        // Fallback: Get bookings for the next 3 months to show availability
+        startDate = dayjs().format('YYYY-MM-DD');
+        endDate = dayjs().add(3, 'months').format('YYYY-MM-DD');
+      }
+      
+      const response = await getRequest(
+        `/api/bookingStables?stableId=${stableId}&startDate=${startDate}&endDate=${endDate}`
+      );
+      
+      if (response.success && response.data) {
+        setBookingAvailability(response.data);
+      } else {
+        setAvailabilityError('Failed to fetch booking availability');
+      }
+    } catch (error) {
+      console.error('Error fetching booking availability:', error);
+      setAvailabilityError('Error loading booking availability');
+    } finally {
+      setAvailabilityLoading(false);
+    }
   };
 
 
@@ -143,7 +216,8 @@ function BookingStablesContent() {
     setLoading(true);
     try {
       const bookingData = {
-        userId: userData.id ,
+        clientId: userData.id,
+        userId: selectedStable?.userId?._id || selectedStable?.userId,
         stableId: selectedStable?.stableId,
         bookingType: bookingType,
         startDate: selectedDateRange[0].format('YYYY-MM-DD'),
@@ -166,6 +240,10 @@ function BookingStablesContent() {
         form.resetFields();
         setBookingType(null);
         setSelectedDateRange(null);
+        // Refresh availability data to show the new booking
+        if (selectedStable?.stableId) {
+          fetchBookingAvailability(selectedStable.stableId, selectedDateRange);
+        }
       } else {
         notification.error({
           message: 'Booking Failed',
@@ -186,10 +264,11 @@ function BookingStablesContent() {
   };
 
   return (
-    <div className="font-sans">
-      <TopSection title="Booking Stables" />
-      
-      <section className="mx-auto max-w-6xl px-4 py-10">
+    <Suspense fallback={<div className="flex justify-center items-center min-h-screen">Loading...</div>}>
+      <div className="font-sans">
+        <TopSection title="Booking Stables" />
+        
+        <section className="mx-auto max-w-6xl px-4 py-10">
         {/* Selected Stable Information */}
         {selectedStable && (
           <Card className="mb-6" title="Selected Stable">
@@ -348,19 +427,73 @@ function BookingStablesContent() {
               </Form>
             </Card>
           </Col>
-        </Row>
-      </section>
-    </div>
-  );
-}
 
-// Main export function with Suspense boundary
-export default function BookingStablesPage() {
-  return (
-    <Suspense fallback={<div className="flex justify-center items-center min-h-screen">Loading...</div>}>
-      <BookingStablesContent />
+          {/* Booking Availability Panel */}
+          <Col xs={24} lg={12}>
+            <Card 
+              title={
+                selectedDateRange && selectedDateRange.length === 2 
+                  ? `Booking Availability (${dayjs(selectedDateRange[0]).subtract(15, 'days').format('MMM DD')} - ${dayjs(selectedDateRange[1]).add(15, 'days').format('MMM DD, YYYY')})`
+                  : "Booking Availability"
+              }
+              className="h-fit"
+              extra={
+                selectedStable && (
+                  <Button 
+                    size="small" 
+                    onClick={() => fetchBookingAvailability(selectedStable.stableId, selectedDateRange)}
+                    loading={availabilityLoading}
+                  >
+                    Refresh
+                  </Button>
+                )
+              }
+            >
+              {availabilityLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <Spin size="large" />
+                </div>
+              ) : availabilityError ? (
+                <Alert
+                  message="Error Loading Availability"
+                  description={availabilityError}
+                  type="error"
+                  showIcon
+                />
+              ) : bookingAvailability.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No bookings found for the next 3 months</p>
+                  <p className="text-sm text-gray-400 mt-2">This stable appears to be available!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-gray-800">Booked Dates</h4>
+                    <span className="text-sm text-gray-500">
+                      {bookingAvailability.length} booking{bookingAvailability.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {bookingAvailability.map((booking) => (
+                      <Tag key={booking._id} color="red" className="text-xs">
+                        {dayjs(booking.startDate).format('MMM DD, YYYY')} to {dayjs(booking.endDate).format('MMM DD, YYYY')}
+                      </Tag>
+                    ))}
+                  </div>
+                  
+                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Note:</strong> These dates are already booked and not available for new bookings.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </Col>
+        </Row>
+        </section>
+      </div>
     </Suspense>
   );
 }
-
-

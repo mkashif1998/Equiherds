@@ -43,6 +43,7 @@ export async function GET(req, { params }) {
 
     const booking = await BookingStables.findById(id)
       .populate("userId", "firstName lastName email phoneNumber")
+      .populate("clientId", "firstName lastName email phoneNumber _id")
       .populate("stableId", "Tittle Deatils location coordinates PriceRate");
 
     if (!booking) {
@@ -96,7 +97,8 @@ export async function PUT(req, { params }) {
       endDate,
       numberOfHorses,
       price,
-      totalPrice
+      totalPrice,
+      clientId
     } = body;
 
     // Validate bookingType if provided
@@ -176,13 +178,14 @@ export async function PUT(req, { params }) {
     if (numberOfHorses) updateData.numberOfHorses = numberOfHorses;
     if (price) updateData.price = price;
     if (totalPrice) updateData.totalPrice = totalPrice;
-
+    if (clientId) updateData.clientId = clientId;
     // Update the booking
     const updatedBooking = await BookingStables.findByIdAndUpdate(
       id,
       updateData,
       { new: true, runValidators: true }
     ).populate("userId", "firstName lastName email phoneNumber")
+     .populate("clientId", "firstName lastName email phoneNumber _id")
      .populate("stableId", "Tittle Deatils location coordinates PriceRate");
 
     return NextResponse.json({
