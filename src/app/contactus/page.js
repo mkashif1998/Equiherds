@@ -31,7 +31,7 @@ export default function ContactPage() {
       // Simulate form submission
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      toast.success("Message sent successfully! We'll get back to you soon.");
+      toast.success("Message sent successfully! We&apos;ll get back to you soon.");
       setFormData({
         name: "",
         email: "",
@@ -58,7 +58,7 @@ export default function ContactPage() {
               Get in Touch
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              We'd love to hear from you. Send us a message and we'll respond as soon as possible.
+              We&apos;d love to hear from you. Send us a message and we&apos;ll respond as soon as possible.
             </p>
           </div>
 
@@ -79,7 +79,7 @@ export default function ContactPage() {
               </div>
               <h3 className="text-xl font-semibold text-gray-800 mb-2">Email</h3>
               <p className="text-gray-600 mb-2">info@equiherds.com</p>
-              <p className="text-sm text-gray-500">We'll respond within 24 hours</p>
+              <p className="text-sm text-gray-500">We&apos;ll respond within 24 hours</p>
             </div>
 
             <div className="bg-white p-8 rounded-xl shadow-sm text-center">
@@ -104,7 +104,7 @@ export default function ContactPage() {
                 <h3 className="text-3xl font-bold text-gray-800 mb-4">Send us a Message</h3>
                 <p className="text-gray-600">
                   Have a question about our services? Need help with booking? 
-                  We're here to help you with all your equestrian needs.
+                  We&apos;re here to help you with all your equestrian needs.
                 </p>
               </div>
 
@@ -222,7 +222,7 @@ export default function ContactPage() {
               <div className="mb-8">
                 <h3 className="text-3xl font-bold text-gray-800 mb-4">Visit Our Office</h3>
                 <p className="text-gray-600">
-                  Come visit us at our headquarters. We'd love to meet you in person 
+                  Come visit us at our headquarters. We&apos;d love to meet you in person 
                   and discuss your equestrian needs.
                 </p>
               </div>
@@ -280,7 +280,7 @@ export default function ContactPage() {
               </h4>
               <p className="text-gray-600">
                 Simply browse our available stables, select your preferred dates, and complete the booking process. 
-                You'll receive a confirmation email with all the details.
+                You&apos;ll receive a confirmation email with all the details.
               </p>
             </div>
 

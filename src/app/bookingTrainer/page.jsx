@@ -17,11 +17,11 @@ dayjs.extend(isSameOrAfter);
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 
-// Main export function with Suspense boundary
-export default function BookingStablesPage() {
+// Component that uses useSearchParams
+function BookingTrainerContent() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [selectedStable, setSelectedStable] = useState(null);
+  const [selectedTrainer, setSelectedTrainer] = useState(null);
   const [bookingType, setBookingType] = useState(null); // 'day' or 'week'
   const [selectedDateRange, setSelectedDateRange] = useState(null);
   const [bookingAvailability, setBookingAvailability] = useState([]);
@@ -30,26 +30,29 @@ export default function BookingStablesPage() {
   const searchParams = useSearchParams();
   const { notification } = App.useApp();
 
-  // Fetch stable data and set selected stable
+  // Fetch trainer data and set selected trainer
   useEffect(() => {
-    const fetchStableData = async () => {
+    const fetchTrainerData = async () => {
       if (searchParams) {
-        const stableId = searchParams.get('stableId');
-        if (stableId) {
+        const trainerId = searchParams.get('trainerId');
+        if (trainerId) {
           try {
             setLoading(true);
-            const response = await getRequest(`/api/stables/${stableId}`);
+            const response = await getRequest(`/api/trainer/${trainerId}`);
             
             if (response && response._id) {
               // Normalize the API response data
               const normalizedData = {
-                stableId: response._id,
-                title: response.Tittle || "Untitled Stable",
-                details: response.Deatils || "",
-                rating: response.Rating || 0,
-                images: Array.isArray(response.image) && response.image.length > 0 ? response.image : ["/product/1.jpg"],
-                location: response.location || "",
-                coordinates: response.coordinates || null,
+                trainerId: response._id,
+                title: response.title || response.Tittle || "Untitled Trainer",
+                details: response.details || response.Deatils || "",
+                rating: response.Rating || response.rating || 0,
+                images: Array.isArray(response.images) && response.images.length > 0 
+                  ? response.images 
+                  : Array.isArray(response.image) && response.image.length > 0 
+                  ? response.image 
+                  : ["/product/2.jpg"],
+                experience: response.Experience || response.experience || "",
                 userId: response.userId || null,
                 ownerName: response.userId ? `${response.userId.firstName || ''} ${response.userId.lastName || ''}`.trim() : '',
                 ownerEmail: response.userId?.email || '',
@@ -86,21 +89,21 @@ export default function BookingStablesPage() {
               // Set price as first entry if available
               normalizedData.price = normalizedData.priceRates.length > 0 ? normalizedData.priceRates[0].price : 0;
 
-              setSelectedStable(normalizedData);
-              // Fetch booking availability for this stable
-              fetchBookingAvailability(stableId);
+              setSelectedTrainer(normalizedData);
+              // Fetch booking availability for this trainer
+              fetchBookingAvailability(trainerId);
             } else {
               notification.error({
-                message: 'Stable Not Found',
-                description: 'The requested stable could not be found',
+                message: 'Trainer Not Found',
+                description: 'The requested trainer could not be found',
                 placement: 'topRight',
               });
             }
           } catch (error) {
-            console.error('Error fetching stable data:', error);
+            console.error('Error fetching trainer data:', error);
             notification.error({
-              message: 'Error Loading Stable',
-              description: 'Failed to load stable information',
+              message: 'Error Loading Trainer',
+              description: 'Failed to load trainer information',
               placement: 'topRight',
             });
           } finally {
@@ -110,7 +113,7 @@ export default function BookingStablesPage() {
       }
     };
 
-    fetchStableData();
+    fetchTrainerData();
   }, [searchParams, notification]);
 
   // Handle booking type selection
@@ -123,14 +126,14 @@ export default function BookingStablesPage() {
   const handleDateRangeChange = (dates) => {
     setSelectedDateRange(dates);
     // Fetch availability for the selected date range (with 15 days buffer)
-    if (dates && dates.length === 2 && selectedStable?.stableId) {
-      fetchBookingAvailability(selectedStable.stableId, dates);
+    if (dates && dates.length === 2 && selectedTrainer?.trainerId) {
+      fetchBookingAvailability(selectedTrainer.trainerId, dates);
     }
   };
 
-  // Fetch booking availability for the selected stable
-  const fetchBookingAvailability = async (stableId, userDateRange = null) => {
-    if (!stableId) return;
+  // Fetch booking availability for the selected trainer
+  const fetchBookingAvailability = async (trainerId, userDateRange = null) => {
+    if (!trainerId) return;
     
     setAvailabilityLoading(true);
     setAvailabilityError(null);
@@ -152,7 +155,7 @@ export default function BookingStablesPage() {
       }
       
       const response = await getRequest(
-        `/api/bookingStables?stableId=${stableId}&startDate=${startDate}&endDate=${endDate}`
+        `/api/bookingTrainer?trainerId=${trainerId}&startDate=${startDate}&endDate=${endDate}`
       );
       
       if (response.success && response.data) {
@@ -171,23 +174,23 @@ export default function BookingStablesPage() {
 
   // Get booking price based on booking type
   const getBookingPrice = () => {
-    if (!selectedStable || !bookingType) return 0;
+    if (!selectedTrainer || !bookingType) return 0;
     
-    // Use stable's price rates if available
-    if (selectedStable.priceRates && selectedStable.priceRates.length > 0) {
+    // Use trainer's price rates if available
+    if (selectedTrainer.priceRates && selectedTrainer.priceRates.length > 0) {
       // Find the rate type that matches the booking type
-      const matchingRate = selectedStable.priceRates.find(pr => pr.rateType === bookingType);
+      const matchingRate = selectedTrainer.priceRates.find(pr => pr.rateType === bookingType);
       
       if (matchingRate) {
         return matchingRate.price;
       }
       
       // Fallback to first available rate
-      return selectedStable.priceRates[0].price;
+      return selectedTrainer.priceRates[0].price;
     }
     
-    // Fallback to stable's base price
-    return selectedStable.price || 0;
+    // Fallback to trainer's base price
+    return selectedTrainer.price || 0;
   };
 
   // Handle form submission
@@ -217,19 +220,18 @@ export default function BookingStablesPage() {
     try {
       const bookingData = {
         clientId: userData.id,
-        userId: selectedStable?.userId?._id || selectedStable?.userId,
-        stableId: selectedStable?.stableId,
+        userId: selectedTrainer?.userId?._id || selectedTrainer?.userId,
+        trainerId: selectedTrainer?.trainerId,
         bookingType: bookingType,
         startDate: selectedDateRange[0].format('YYYY-MM-DD'),
         endDate: selectedDateRange[1].format('YYYY-MM-DD'),
-        numberOfHorses: values.horseCount,
         price: getBookingPrice(),
         totalPrice: getBookingPrice()
       };
       
       console.log('Sending booking data:', bookingData);
       
-      const result = await postRequest('/api/bookingStables', bookingData);
+      const result = await postRequest('/api/bookingTrainer', bookingData);
 
       if (result.success) {
         notification.success({
@@ -241,8 +243,8 @@ export default function BookingStablesPage() {
         setBookingType(null);
         setSelectedDateRange(null);
         // Refresh availability data to show the new booking
-        if (selectedStable?.stableId) {
-          fetchBookingAvailability(selectedStable.stableId, selectedDateRange);
+        if (selectedTrainer?.trainerId) {
+          fetchBookingAvailability(selectedTrainer.trainerId, selectedDateRange);
         }
       } else {
         notification.error({
@@ -264,66 +266,70 @@ export default function BookingStablesPage() {
   };
 
   return (
-    <Suspense fallback={<div className="flex justify-center items-center min-h-screen">Loading...</div>}>
-      <div className="font-sans">
-        <TopSection title="Booking Stables" />
-        
-        <section className="mx-auto max-w-6xl px-4 py-10">
-        {/* Selected Stable Information */}
-        {selectedStable && (
-          <Card className="mb-6" title="Selected Stable">
-            <Row gutter={[16, 16]}>
-              <Col xs={24} md={8}>
-                {selectedStable.images && selectedStable.images.length > 0 && (
-                  <img 
-                    src={selectedStable.images[0]} 
-                    alt={selectedStable.title}
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
+    <div className="font-sans">
+      <TopSection title="Booking Trainer" />
+      
+      <section className="mx-auto max-w-6xl px-4 py-10">
+      {/* Selected Trainer Information */}
+      {selectedTrainer && (
+        <Card className="mb-6" title="Selected Trainer">
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={8}>
+              {selectedTrainer.images && selectedTrainer.images.length > 0 && (
+                <img 
+                  src={selectedTrainer.images[0]} 
+                  alt={selectedTrainer.title}
+                  className="w-full h-48 object-cover rounded-lg"
+                />
+              )}
+            </Col>
+            <Col xs={24} md={16}>
+              <div className="space-y-3">
+                <h3 className="text-xl font-semibold text-brand">{selectedTrainer.title}</h3>
+                {selectedTrainer.details && (
+                  <p className="text-gray-600">{selectedTrainer.details}</p>
                 )}
-              </Col>
-              <Col xs={24} md={16}>
-                <div className="space-y-3">
-                  <h3 className="text-xl font-semibold text-brand">{selectedStable.title}</h3>
-                  {selectedStable.details && (
-                    <p className="text-gray-600">{selectedStable.details}</p>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    {selectedStable.priceRates && selectedStable.priceRates.length > 0 ? (
-                      selectedStable.priceRates.map((pr, idx) => (
-                        <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-brand/10 text-brand border border-brand/20">
-                          ${pr.price}{pr.rateType ? `/${pr.rateType}` : ''}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-brand/10 text-brand border border-brand/20">
-                        ${selectedStable.price}
+                {selectedTrainer.experience && (
+                  <p className="text-sm text-gray-500">
+                    <strong>Experience:</strong> {selectedTrainer.experience}
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {selectedTrainer.priceRates && selectedTrainer.priceRates.length > 0 ? (
+                    selectedTrainer.priceRates.map((pr, idx) => (
+                      <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-brand/10 text-brand border border-brand/20">
+                        ${pr.price}{pr.rateType ? `/${pr.rateType}` : ''}
                       </span>
-                    )}
-                  </div>
-                  {selectedStable.ownerName && (
-                    <p className="text-sm text-gray-500">
-                      Owner: {selectedStable.ownerName}
-                      {selectedStable.ownerEmail && ` (${selectedStable.ownerEmail})`}
-                    </p>
-                  )}
-                  {selectedStable.slots && selectedStable.slots.length > 0 && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-700 mb-2">Available Slots:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedStable.slots.map((slot, idx) => (
-                          <span key={idx} className="inline-flex items-center px-2 py-1 rounded text-xs bg-gray-100 text-gray-700">
-                            {slot.date} {slot.startTime}-{slot.endTime}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+                    ))
+                  ) : (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-brand/10 text-brand border border-brand/20">
+                      ${selectedTrainer.price}
+                    </span>
                   )}
                 </div>
-              </Col>
-            </Row>
-          </Card>
-        )}
+                {selectedTrainer.ownerName && (
+                  <p className="text-sm text-gray-500">
+                    Trainer: {selectedTrainer.ownerName}
+                    {selectedTrainer.ownerEmail && ` (${selectedTrainer.ownerEmail})`}
+                  </p>
+                )}
+                {selectedTrainer.slots && selectedTrainer.slots.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">Available Slots:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTrainer.slots.map((slot, idx) => (
+                        <span key={idx} className="inline-flex items-center px-2 py-1 rounded text-xs bg-gray-100 text-gray-700">
+                          {slot.date} {slot.startTime}-{slot.endTime}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Col>
+          </Row>
+        </Card>
+      )}
 
         <Row gutter={[24, 24]}>
           {/* Booking Form */}
@@ -368,18 +374,18 @@ export default function BookingStablesPage() {
                 )}
 
                 <Form.Item
-                  label="Number of Horses"
-                  name="horseCount"
-                  rules={[{ required: true, message: 'Please enter number of horses' }]}
+                  label="Training Session Type"
+                  name="sessionType"
+                  rules={[{ required: true, message: 'Please select training session type' }]}
                 >
                   <Select
                     size="large"
-                    placeholder="Select number of horses"
+                    placeholder="Select training session type"
                   >
-                    <Option value={1}>1 Horse</Option>
-                    <Option value={2}>2 Horses</Option>
-                    <Option value={3}>3 Horses</Option>
-                    <Option value={4}>4+ Horses</Option>
+                    <Option value="basic">Basic Training</Option>
+                    <Option value="advanced">Advanced Training</Option>
+                    <Option value="jumping">Jumping Training</Option>
+                    <Option value="dressage">Dressage Training</Option>
                   </Select>
                 </Form.Item>
 
@@ -421,7 +427,7 @@ export default function BookingStablesPage() {
                     className="w-full"
                     disabled={!bookingType || !selectedDateRange}
                   >
-                    Book Stable (${getBookingPrice()})
+                    Book Training Session (${getBookingPrice()})
                   </Button>
                 </Form.Item>
               </Form>
@@ -437,17 +443,17 @@ export default function BookingStablesPage() {
                   : "Booking Availability"
               }
               className="h-fit"
-              extra={
-                selectedStable && (
-                  <Button 
-                    size="small" 
-                    onClick={() => fetchBookingAvailability(selectedStable.stableId, selectedDateRange)}
-                    loading={availabilityLoading}
-                  >
-                    Refresh
-                  </Button>
-                )
-              }
+            extra={
+              selectedTrainer && (
+                <Button 
+                  size="small" 
+                  onClick={() => fetchBookingAvailability(selectedTrainer.trainerId, selectedDateRange)}
+                  loading={availabilityLoading}
+                >
+                  Refresh
+                </Button>
+              )
+            }
             >
               {availabilityLoading ? (
                 <div className="flex justify-center items-center py-8">
@@ -463,7 +469,7 @@ export default function BookingStablesPage() {
               ) : bookingAvailability.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-gray-500">No bookings found for the next 3 months</p>
-                  <p className="text-sm text-gray-400 mt-2">This stable appears to be available!</p>
+                  <p className="text-sm text-gray-400 mt-2">This trainer appears to be available!</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -494,6 +500,14 @@ export default function BookingStablesPage() {
         </Row>
         </section>
       </div>
+  );
+}
+
+// Main export function with Suspense boundary
+export default function BookingTrainerPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center min-h-screen">Loading...</div>}>
+      <BookingTrainerContent />
     </Suspense>
   );
 }
