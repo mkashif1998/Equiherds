@@ -103,7 +103,20 @@ export default function Trainer() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    
+    // Handle nested field names (e.g., "disciplines.dressagePrice")
+    if (name.includes('.')) {
+      const [section, field] = name.split('.');
+      setForm((prev) => ({
+        ...prev,
+        [section]: {
+          ...prev[section],
+          [field]: value
+        }
+      }));
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleCheckboxChange = (fieldPath, checked) => {
@@ -234,6 +247,11 @@ export default function Trainer() {
         status: form.status || "active",
         schedule: finalSlots, // Send all slots as array to schedule field
         images: uploadedUrls,
+        // New fields
+        disciplines: form.disciplines || {},
+        training: form.training || {},
+        competitionCoaching: form.competitionCoaching || {},
+        diplomas: form.diplomas || []
       };
 
       if (editingId) {
@@ -357,29 +375,29 @@ export default function Trainer() {
       images: [],
       slots: stable.slots || [],
       status: stable.status || "active",
-      disciplines: stable.disciplines || {
-        dressage: false,
-        showJumping: false,
-        eventing: false,
-        endurance: false,
-        western: false,
-        vaulting: false,
-        dressagePrice: "",
-        showJumpingPrice: "",
-        eventingPrice: "",
-        endurancePrice: "",
-        westernPrice: "",
-        vaultingPrice: ""
+      disciplines: {
+        dressage: stable.disciplines?.dressage || false,
+        showJumping: stable.disciplines?.showJumping || false,
+        eventing: stable.disciplines?.eventing || false,
+        endurance: stable.disciplines?.endurance || false,
+        western: stable.disciplines?.western || false,
+        vaulting: stable.disciplines?.vaulting || false,
+        dressagePrice: stable.disciplines?.dressagePrice || "",
+        showJumpingPrice: stable.disciplines?.showJumpingPrice || "",
+        eventingPrice: stable.disciplines?.eventingPrice || "",
+        endurancePrice: stable.disciplines?.endurancePrice || "",
+        westernPrice: stable.disciplines?.westernPrice || "",
+        vaultingPrice: stable.disciplines?.vaultingPrice || ""
       },
-      training: stable.training || {
-        onLocationLessons: false,
-        lessonsOnTrainersLocation: false,
-        onLocationLessonsPrice: "",
-        lessonsOnTrainersLocationPrice: ""
+      training: {
+        onLocationLessons: stable.training?.onLocationLessons || false,
+        lessonsOnTrainersLocation: stable.training?.lessonsOnTrainersLocation || false,
+        onLocationLessonsPrice: stable.training?.onLocationLessonsPrice || "",
+        lessonsOnTrainersLocationPrice: stable.training?.lessonsOnTrainersLocationPrice || ""
       },
-      competitionCoaching: stable.competitionCoaching || {
-        onLocationCoaching: false,
-        onLocationCoachingPrice: ""
+      competitionCoaching: {
+        onLocationCoaching: stable.competitionCoaching?.onLocationCoaching || false,
+        onLocationCoachingPrice: stable.competitionCoaching?.onLocationCoachingPrice || ""
       },
       diplomas: stable.diplomas || []
     });
@@ -414,29 +432,29 @@ export default function Trainer() {
             rating: 0,
             images: Array.isArray(t.images) ? t.images : [],
             slots: Array.isArray(t.schedule) ? t.schedule : [],
-            disciplines: t.disciplines || {
-              dressage: false,
-              showJumping: false,
-              eventing: false,
-              endurance: false,
-              western: false,
-              vaulting: false,
-              dressagePrice: "",
-              showJumpingPrice: "",
-              eventingPrice: "",
-              endurancePrice: "",
-              westernPrice: "",
-              vaultingPrice: ""
+            disciplines: {
+              dressage: t.disciplines?.dressage || false,
+              showJumping: t.disciplines?.showJumping || false,
+              eventing: t.disciplines?.eventing || false,
+              endurance: t.disciplines?.endurance || false,
+              western: t.disciplines?.western || false,
+              vaulting: t.disciplines?.vaulting || false,
+              dressagePrice: t.disciplines?.dressagePrice || "",
+              showJumpingPrice: t.disciplines?.showJumpingPrice || "",
+              eventingPrice: t.disciplines?.eventingPrice || "",
+              endurancePrice: t.disciplines?.endurancePrice || "",
+              westernPrice: t.disciplines?.westernPrice || "",
+              vaultingPrice: t.disciplines?.vaultingPrice || ""
             },
-            training: t.training || {
-              onLocationLessons: false,
-              lessonsOnTrainersLocation: false,
-              onLocationLessonsPrice: "",
-              lessonsOnTrainersLocationPrice: ""
+            training: {
+              onLocationLessons: t.training?.onLocationLessons || false,
+              lessonsOnTrainersLocation: t.training?.lessonsOnTrainersLocation || false,
+              onLocationLessonsPrice: t.training?.onLocationLessonsPrice || "",
+              lessonsOnTrainersLocationPrice: t.training?.lessonsOnTrainersLocationPrice || ""
             },
-            competitionCoaching: t.competitionCoaching || {
-              onLocationCoaching: false,
-              onLocationCoachingPrice: ""
+            competitionCoaching: {
+              onLocationCoaching: t.competitionCoaching?.onLocationCoaching || false,
+              onLocationCoachingPrice: t.competitionCoaching?.onLocationCoachingPrice || ""
             },
             diplomas: Array.isArray(t.diplomas) ? t.diplomas : []
           }));
@@ -796,7 +814,7 @@ export default function Trainer() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-brand mb-1">Experience</label>
+                <label className="block text-sm font-medium text-brand mb-1">Experience </label>
                 <input
                   type="text"
                   name="Experience"
@@ -938,7 +956,7 @@ export default function Trainer() {
                           <input
                             type="number"
                             name="disciplines.dressagePrice"
-                            value={form.disciplines?.dressagePrice || ""}
+                            value={form.disciplines.dressagePrice}
                             onChange={handleInputChange}
                             className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
                             placeholder="Price"
@@ -959,7 +977,7 @@ export default function Trainer() {
                           <input
                             type="number"
                             name="disciplines.showJumpingPrice"
-                            value={form.disciplines?.showJumpingPrice || ""}
+                            value={form.disciplines.showJumpingPrice}
                             onChange={handleInputChange}
                             className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
                             placeholder="Price"
@@ -980,7 +998,7 @@ export default function Trainer() {
                           <input
                             type="number"
                             name="disciplines.eventingPrice"
-                            value={form.disciplines?.eventingPrice || ""}
+                            value={form.disciplines.eventingPrice}
                             onChange={handleInputChange}
                             className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
                             placeholder="Price"
@@ -1005,7 +1023,7 @@ export default function Trainer() {
                           <input
                             type="number"
                             name="disciplines.endurancePrice"
-                            value={form.disciplines?.endurancePrice || ""}
+                            value={form.disciplines.endurancePrice}
                             onChange={handleInputChange}
                             className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
                             placeholder="Price"
@@ -1026,7 +1044,7 @@ export default function Trainer() {
                           <input
                             type="number"
                             name="disciplines.westernPrice"
-                            value={form.disciplines?.westernPrice || ""}
+                            value={form.disciplines.westernPrice}
                             onChange={handleInputChange}
                             className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
                             placeholder="Price"
@@ -1047,7 +1065,7 @@ export default function Trainer() {
                           <input
                             type="number"
                             name="disciplines.vaultingPrice"
-                            value={form.disciplines?.vaultingPrice || ""}
+                            value={form.disciplines.vaultingPrice}
                             onChange={handleInputChange}
                             className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
                             placeholder="Price"
@@ -1078,7 +1096,7 @@ export default function Trainer() {
                           <input
                             type="number"
                             name="training.onLocationLessonsPrice"
-                            value={form.training?.onLocationLessonsPrice || ""}
+                            value={form.training.onLocationLessonsPrice}
                             onChange={handleInputChange}
                             className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
                             placeholder="Price"
@@ -1099,7 +1117,7 @@ export default function Trainer() {
                           <input
                             type="number"
                             name="training.lessonsOnTrainersLocationPrice"
-                            value={form.training?.lessonsOnTrainersLocationPrice || ""}
+                            value={form.training.lessonsOnTrainersLocationPrice}
                             onChange={handleInputChange}
                             className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
                             placeholder="Price"
@@ -1126,7 +1144,7 @@ export default function Trainer() {
                           <input
                             type="number"
                             name="competitionCoaching.onLocationCoachingPrice"
-                            value={form.competitionCoaching?.onLocationCoachingPrice || ""}
+                            value={form.competitionCoaching.onLocationCoachingPrice}
                             onChange={handleInputChange}
                             className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
                             placeholder="Price"

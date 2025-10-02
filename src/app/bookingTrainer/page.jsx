@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { DatePicker, Form, Button, Card, Row, Col, TimePicker, Select, App, Tag, Spin, Alert } from "antd";
+import { DatePicker, Form, Button, Card, Row, Col, TimePicker, Select, Checkbox, App, Tag, Spin, Alert } from "antd";
 import dayjs from "dayjs";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
@@ -24,6 +24,23 @@ function BookingTrainerContent() {
   const [selectedTrainer, setSelectedTrainer] = useState(null);
   const [bookingType, setBookingType] = useState(null); // 'week' or 'month'
   const [selectedDateRange, setSelectedDateRange] = useState(null);
+  const [selectedServices, setSelectedServices] = useState({
+    disciplines: {
+      dressage: false,
+      showJumping: false,
+      eventing: false,
+      endurance: false,
+      western: false,
+      vaulting: false
+    },
+    training: {
+      onLocationLessons: false,
+      lessonsOnTrainersLocation: false
+    },
+    competitionCoaching: {
+      onLocationCoaching: false
+    }
+  });
   const searchParams = useSearchParams();
   const { notification } = App.useApp();
 
@@ -75,6 +92,101 @@ function BookingTrainerContent() {
     setSelectedDateRange(dates);
   };
 
+  // Handle service selection
+  const handleServiceChange = (serviceType, serviceName, checked) => {
+    setSelectedServices(prev => ({
+      ...prev,
+      [serviceType]: {
+        ...prev[serviceType],
+        [serviceName]: checked
+      }
+    }));
+  };
+
+  // Calculate number of days in booking
+  const getNumberOfDays = () => {
+    if (!selectedDateRange || selectedDateRange.length !== 2) return 0;
+    return selectedDateRange[1].diff(selectedDateRange[0], 'day') + 1;
+  };
+
+  // Calculate additional service costs
+  const getAdditionalServiceCosts = () => {
+    if (!selectedTrainer || !selectedDateRange) return 0;
+    
+    const numberOfDays = getNumberOfDays();
+    let totalAdditionalCost = 0;
+
+    // Disciplines costs (per day)
+    if (selectedServices.disciplines.dressage && selectedTrainer.disciplines?.dressage) {
+      totalAdditionalCost += (selectedTrainer.disciplines.dressagePrice || 0) * numberOfDays;
+    }
+    if (selectedServices.disciplines.showJumping && selectedTrainer.disciplines?.showJumping) {
+      totalAdditionalCost += (selectedTrainer.disciplines.showJumpingPrice || 0) * numberOfDays;
+    }
+    if (selectedServices.disciplines.eventing && selectedTrainer.disciplines?.eventing) {
+      totalAdditionalCost += (selectedTrainer.disciplines.eventingPrice || 0) * numberOfDays;
+    }
+    if (selectedServices.disciplines.endurance && selectedTrainer.disciplines?.endurance) {
+      totalAdditionalCost += (selectedTrainer.disciplines.endurancePrice || 0) * numberOfDays;
+    }
+    if (selectedServices.disciplines.western && selectedTrainer.disciplines?.western) {
+      totalAdditionalCost += (selectedTrainer.disciplines.westernPrice || 0) * numberOfDays;
+    }
+    if (selectedServices.disciplines.vaulting && selectedTrainer.disciplines?.vaulting) {
+      totalAdditionalCost += (selectedTrainer.disciplines.vaultingPrice || 0) * numberOfDays;
+    }
+
+    // Training costs (per day)
+    if (selectedServices.training.onLocationLessons && selectedTrainer.training?.onLocationLessons) {
+      totalAdditionalCost += (selectedTrainer.training.onLocationLessonsPrice || 0) * numberOfDays;
+    }
+    if (selectedServices.training.lessonsOnTrainersLocation && selectedTrainer.training?.lessonsOnTrainersLocation) {
+      totalAdditionalCost += (selectedTrainer.training.lessonsOnTrainersLocationPrice || 0) * numberOfDays;
+    }
+
+    // Competition coaching costs (per day)
+    if (selectedServices.competitionCoaching.onLocationCoaching && selectedTrainer.competitionCoaching?.onLocationCoaching) {
+      totalAdditionalCost += (selectedTrainer.competitionCoaching.onLocationCoachingPrice || 0) * numberOfDays;
+    }
+
+    return totalAdditionalCost;
+  };
+
+  // Get service price details for detailed breakdown
+  const getServicePriceDetails = () => {
+    if (!selectedTrainer || !selectedDateRange) return {};
+    
+    const numberOfDays = getNumberOfDays();
+    const priceDetails = {
+      disciplines: {
+        dressage: selectedServices.disciplines.dressage,
+        dressagePrice: selectedServices.disciplines.dressage && selectedTrainer.disciplines?.dressage ? (selectedTrainer.disciplines.dressagePrice || 0) * numberOfDays : 0,
+        showJumping: selectedServices.disciplines.showJumping,
+        showJumpingPrice: selectedServices.disciplines.showJumping && selectedTrainer.disciplines?.showJumping ? (selectedTrainer.disciplines.showJumpingPrice || 0) * numberOfDays : 0,
+        eventing: selectedServices.disciplines.eventing,
+        eventingPrice: selectedServices.disciplines.eventing && selectedTrainer.disciplines?.eventing ? (selectedTrainer.disciplines.eventingPrice || 0) * numberOfDays : 0,
+        endurance: selectedServices.disciplines.endurance,
+        endurancePrice: selectedServices.disciplines.endurance && selectedTrainer.disciplines?.endurance ? (selectedTrainer.disciplines.endurancePrice || 0) * numberOfDays : 0,
+        western: selectedServices.disciplines.western,
+        westernPrice: selectedServices.disciplines.western && selectedTrainer.disciplines?.western ? (selectedTrainer.disciplines.westernPrice || 0) * numberOfDays : 0,
+        vaulting: selectedServices.disciplines.vaulting,
+        vaultingPrice: selectedServices.disciplines.vaulting && selectedTrainer.disciplines?.vaulting ? (selectedTrainer.disciplines.vaultingPrice || 0) * numberOfDays : 0
+      },
+      training: {
+        onLocationLessons: selectedServices.training.onLocationLessons,
+        onLocationLessonsPrice: selectedServices.training.onLocationLessons && selectedTrainer.training?.onLocationLessons ? (selectedTrainer.training.onLocationLessonsPrice || 0) * numberOfDays : 0,
+        lessonsOnTrainersLocation: selectedServices.training.lessonsOnTrainersLocation,
+        lessonsOnTrainersLocationPrice: selectedServices.training.lessonsOnTrainersLocation && selectedTrainer.training?.lessonsOnTrainersLocation ? (selectedTrainer.training.lessonsOnTrainersLocationPrice || 0) * numberOfDays : 0
+      },
+      competitionCoaching: {
+        onLocationCoaching: selectedServices.competitionCoaching.onLocationCoaching,
+        onLocationCoachingPrice: selectedServices.competitionCoaching.onLocationCoaching && selectedTrainer.competitionCoaching?.onLocationCoaching ? (selectedTrainer.competitionCoaching.onLocationCoachingPrice || 0) * numberOfDays : 0
+      }
+    };
+
+    return priceDetails;
+  };
+
 
 
   // Calculate hours per week from schedule
@@ -103,14 +215,40 @@ function BookingTrainerContent() {
     const startDate = dayjs(selectedDateRange[0]);
     const endDate = dayjs(selectedDateRange[1]);
     
+    let basePrice = 0;
     if (bookingType === 'week') {
       // Calculate number of weeks and multiply by actual hours per week
       const weeks = Math.ceil(endDate.diff(startDate, 'day') / 7);
-      return hourlyRate * hoursPerWeek * weeks;
+      basePrice = hourlyRate * hoursPerWeek * weeks;
     } else if (bookingType === 'month') {
       // Calculate number of months and multiply by hours per month (hours per week * 4)
       const months = Math.ceil(endDate.diff(startDate, 'month', true));
       const hoursPerMonth = hoursPerWeek * 4; // Assuming 4 weeks per month
+      basePrice = hourlyRate * hoursPerMonth * months;
+    } else {
+      basePrice = hourlyRate;
+    }
+    
+    // Add additional service costs
+    const additionalCosts = getAdditionalServiceCosts();
+    return basePrice + additionalCosts;
+  };
+
+  // Get base booking price (without additional services)
+  const getBaseBookingPrice = () => {
+    if (!selectedTrainer || !bookingType || !selectedDateRange) return 0;
+    
+    const hourlyRate = selectedTrainer.price || 0;
+    const hoursPerWeek = getHoursPerWeek();
+    const startDate = dayjs(selectedDateRange[0]);
+    const endDate = dayjs(selectedDateRange[1]);
+    
+    if (bookingType === 'week') {
+      const weeks = Math.ceil(endDate.diff(startDate, 'day') / 7);
+      return hourlyRate * hoursPerWeek * weeks;
+    } else if (bookingType === 'month') {
+      const months = Math.ceil(endDate.diff(startDate, 'month', true));
+      const hoursPerMonth = hoursPerWeek * 4;
       return hourlyRate * hoursPerMonth * months;
     }
     
@@ -157,6 +295,8 @@ function BookingTrainerContent() {
 
     setLoading(true);
     try {
+      const servicePriceDetails = getServicePriceDetails();
+      
       const bookingData = {
         userId: selectedTrainer?.userId?._id || selectedTrainer?.userId,
         clientId: userData.id,
@@ -165,8 +305,13 @@ function BookingTrainerContent() {
         bookingType: bookingType,
         startDate: selectedDateRange[0].format('YYYY-MM-DD'),
         endDate: selectedDateRange[1].format('YYYY-MM-DD'),
-        price: getPricePerUnit(),
-        totalPrice: calculateTotalPrice()
+        basePrice: getBaseBookingPrice(),
+        additionalServices: selectedServices,
+        servicePriceDetails: servicePriceDetails,
+        additionalServiceCosts: getAdditionalServiceCosts(),
+        totalPrice: calculateTotalPrice(),
+        numberOfDays: getNumberOfDays(),
+        price: getPricePerUnit() // Legacy field for backward compatibility
       };
       
       console.log('Sending booking data:', bookingData);
@@ -182,7 +327,23 @@ function BookingTrainerContent() {
         form.resetFields();
         setBookingType(null);
         setSelectedDateRange(null);
-        setSessionType(null);
+        setSelectedServices({
+          disciplines: {
+            dressage: false,
+            showJumping: false,
+            eventing: false,
+            endurance: false,
+            western: false,
+            vaulting: false
+          },
+          training: {
+            onLocationLessons: false,
+            lessonsOnTrainersLocation: false
+          },
+          competitionCoaching: {
+            onLocationCoaching: false
+          }
+        });
       } else {
         notification.error({
           message: 'Booking Failed',
@@ -207,9 +368,12 @@ function BookingTrainerContent() {
       <TopSection title="Booking Trainer" />
       
       <section className="mx-auto max-w-6xl px-4 py-10">
-      {/* Selected Trainer Information */}
+        {/* Top Section: Selected Trainer and Trainer Schedule - 50% each */}
+        <Row gutter={[24, 24]} className="mb-6">
+          {/* Selected Trainer Information - 50% width */}
+          <Col xs={24} lg={12}>
       {selectedTrainer && (
-        <Card className="mb-6" title="Selected Trainer">
+              <Card title="Selected Trainer" className="h-full">
           <Row gutter={[16, 16]}>
             <Col xs={24} md={8}>
               {selectedTrainer.images && selectedTrainer.images.length > 0 && (
@@ -228,7 +392,7 @@ function BookingTrainerContent() {
                 )}
                 {selectedTrainer.Experience && (
                   <p className="text-sm text-gray-500">
-                    <strong>Experience:</strong> {selectedTrainer.Experience} years
+                          <strong>Experience:</strong> {selectedTrainer.Experience}
                   </p>
                 )}
                 <div className="flex flex-wrap gap-2">
@@ -236,10 +400,10 @@ function BookingTrainerContent() {
                     ${selectedTrainer.price}/hour
                   </span>
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-brand/10 text-brand border border-brand/20">
-                    ${selectedTrainer.price * getHoursPerWeek()}/week ({getHoursPerWeek()} hours)
+                          ${(selectedTrainer.price * getHoursPerWeek()).toFixed(2)}/week ({getHoursPerWeek().toFixed(2)} hours)
                   </span>
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-brand/10 text-brand border border-brand/20">
-                    ${selectedTrainer.price * getHoursPerWeek() * 4}/month ({getHoursPerWeek() * 4} hours)
+                          ${(selectedTrainer.price * getHoursPerWeek() * 4).toFixed(2)}/month ({(getHoursPerWeek() * 4).toFixed(2)} hours)
                   </span>
                 </div>
                 {selectedTrainer.userId && (
@@ -248,112 +412,28 @@ function BookingTrainerContent() {
                     {selectedTrainer.userId.email && ` (${selectedTrainer.userId.email})`}
                   </p>
                 )}
+                      {selectedTrainer.diplomas && selectedTrainer.diplomas.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-700 mb-2">Diplomas:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {selectedTrainer.diplomas.map((diploma, idx) => (
+                              <span key={idx} className="inline-flex items-center px-2 py-1 rounded text-xs bg-gray-100 text-gray-700">
+                                {diploma}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                )}
               </div>
             </Col>
           </Row>
         </Card>
       )}
-
-        <Row gutter={[24, 24]}>
-          {/* Booking Form */}
-          <Col xs={24} lg={12}>
-            <Card title="Booking Information" className="h-fit">
-              <Form
-                form={form}
-                layout="vertical"
-                onFinish={handleSubmit}
-                requiredMark={false}
-              >
-                <Form.Item
-                  label="Select Booking Type"
-                  name="bookingType"
-                  rules={[{ required: true, message: 'Please select booking type' }]}
-                >
-                  <Select
-                    size="large"
-                    placeholder="Choose booking type"
-                    onChange={handleBookingTypeChange}
-                    value={bookingType}
-                  >
-                    <Option value="week">Week</Option>
-                    <Option value="month">Month</Option>
-                  </Select>
-                </Form.Item>
-
-                {bookingType && (
-                  <Form.Item
-                    label="Select Date Range"
-                    name="dateRange"
-                    rules={[{ required: true, message: 'Please select a date range' }]}
-                  >
-                    <RangePicker
-                      style={{ width: '100%' }}
-                      size="large"
-                      onChange={handleDateRangeChange}
-                      disabledDate={(current) => current && current < dayjs().startOf('day')}
-                      placeholder={['Start Date', 'End Date']}
-                    />
-                  </Form.Item>
-                )}
-
-
-                {/* Price Display */}
-                {bookingType && selectedDateRange && (
-                  <div className="mb-4 p-4 bg-brand/5 rounded-lg border border-brand/20">
-                    <h4 className="font-semibold text-gray-800 mb-2">Booking Summary:</h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Booking Type:</span>
-                        <span className="font-medium capitalize">{bookingType}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Date Range:</span>
-                        <span className="font-medium">
-                          {selectedDateRange[0].format('MMM DD')} - {selectedDateRange[1].format('MMM DD, YYYY')}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Duration:</span>
-                        <span className="font-medium">
-                          {bookingType === 'week'
-                            ? `${Math.ceil(dayjs(selectedDateRange[1]).diff(dayjs(selectedDateRange[0]), 'day') / 7)} weeks`
-                            : `${Math.ceil(dayjs(selectedDateRange[1]).diff(dayjs(selectedDateRange[0]), 'month', true))} months`
-                          }
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Price per {bookingType}:</span>
-                        <span className="font-bold text-brand">${getPricePerUnit()}</span>
-                      </div>
-                      <div className="pt-2 border-t border-gray-200">
-                        <div className="flex justify-between items-center">
-                          <span className="font-semibold text-gray-800">Total Price:</span>
-                          <span className="text-xl font-bold text-brand">${calculateTotalPrice()}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <Form.Item>
-                  <Button
-                    type="primary"
-                    htmlType="submit"
-                    size="large"
-                    loading={loading}
-                    className="w-full"
-                    disabled={!bookingType || !selectedDateRange}
-                  >
-                    Book Training Session (${calculateTotalPrice()})
-                  </Button>
-                </Form.Item>
-              </Form>
-            </Card>
           </Col>
 
-          {/* Trainer Schedule Panel */}
+          {/* Trainer Schedule Panel - 50% width */}
           <Col xs={24} lg={12}>
-            <Card title="Trainer Schedule" className="h-fit">
+            <Card title="Trainer Schedule" className="h-full">
               {selectedTrainer && selectedTrainer.schedule && Array.isArray(selectedTrainer.schedule) && selectedTrainer.schedule.length > 0 ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -380,6 +460,330 @@ function BookingTrainerContent() {
                   <p className="text-gray-500">No schedule information available</p>
                 </div>
               )}
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Bottom Section: Booking Information - 100% width */}
+        <Row gutter={[24, 24]}>
+          <Col xs={24}>
+            <Card title="Booking Information">
+              <Form
+                form={form}
+                layout="vertical"
+                onFinish={handleSubmit}
+                requiredMark={false}
+              >
+                {/* Basic Booking Information - 3 columns */}
+                <Row gutter={[16, 16]} className="mb-6">
+                  <Col xs={24} md={8}>
+                <Form.Item
+                  label="Select Booking Type"
+                  name="bookingType"
+                  rules={[{ required: true, message: 'Please select booking type' }]}
+                >
+                  <Select
+                    size="large"
+                    placeholder="Choose booking type"
+                    onChange={handleBookingTypeChange}
+                    value={bookingType}
+                  >
+                    <Option value="week">Week</Option>
+                    <Option value="month">Month</Option>
+                  </Select>
+                </Form.Item>
+                  </Col>
+
+                  <Col xs={24} md={8}>
+                {bookingType && (
+                  <Form.Item
+                    label="Select Date Range"
+                    name="dateRange"
+                    rules={[{ required: true, message: 'Please select a date range' }]}
+                  >
+                    <RangePicker
+                      style={{ width: '100%' }}
+                      size="large"
+                      onChange={handleDateRangeChange}
+                      disabledDate={(current) => current && current < dayjs().startOf('day')}
+                      placeholder={['Start Date', 'End Date']}
+                    />
+                  </Form.Item>
+                )}
+                  </Col>
+                </Row>
+
+                {/* Additional Services Section */}
+                {selectedTrainer && (
+                  <div className="space-y-6">
+                    <h4 className="text-lg font-semibold text-gray-800 border-b pb-2">Additional Services</h4>
+                    
+                    <Row gutter={[16, 16]}>
+                      {/* Disciplines */}
+                      {(selectedTrainer.disciplines && Object.values(selectedTrainer.disciplines).some(option => option)) && (
+                        <Col xs={24} lg={12}>
+                          <div className="border rounded-lg p-4 bg-blue-50 h-full">
+                            <h5 className="font-semibold text-blue-800 mb-3">Disciplines (Per Day)</h5>
+                            <div className="space-y-2">
+                              {selectedTrainer.disciplines.dressage && (
+                                <div className="flex items-center justify-between">
+                                  <Checkbox
+                                    checked={selectedServices.disciplines.dressage}
+                                    onChange={(e) => handleServiceChange('disciplines', 'dressage', e.target.checked)}
+                                  >
+                                    <span className="text-sm">Dressage</span>
+                                  </Checkbox>
+                                  <span className="text-sm font-medium text-blue-700">
+                                    ${selectedTrainer.disciplines.dressagePrice}/day
+                                  </span>
+                                </div>
+                              )}
+                              {selectedTrainer.disciplines.showJumping && (
+                                <div className="flex items-center justify-between">
+                                  <Checkbox
+                                    checked={selectedServices.disciplines.showJumping}
+                                    onChange={(e) => handleServiceChange('disciplines', 'showJumping', e.target.checked)}
+                                  >
+                                    <span className="text-sm">Show Jumping</span>
+                                  </Checkbox>
+                                  <span className="text-sm font-medium text-blue-700">
+                                    ${selectedTrainer.disciplines.showJumpingPrice}/day
+                                  </span>
+                                </div>
+                              )}
+                              {selectedTrainer.disciplines.eventing && (
+                                <div className="flex items-center justify-between">
+                                  <Checkbox
+                                    checked={selectedServices.disciplines.eventing}
+                                    onChange={(e) => handleServiceChange('disciplines', 'eventing', e.target.checked)}
+                                  >
+                                    <span className="text-sm">Eventing</span>
+                                  </Checkbox>
+                                  <span className="text-sm font-medium text-blue-700">
+                                    ${selectedTrainer.disciplines.eventingPrice}/day
+                                  </span>
+                                </div>
+                              )}
+                              {selectedTrainer.disciplines.endurance && (
+                                <div className="flex items-center justify-between">
+                                  <Checkbox
+                                    checked={selectedServices.disciplines.endurance}
+                                    onChange={(e) => handleServiceChange('disciplines', 'endurance', e.target.checked)}
+                                  >
+                                    <span className="text-sm">Endurance</span>
+                                  </Checkbox>
+                                  <span className="text-sm font-medium text-blue-700">
+                                    ${selectedTrainer.disciplines.endurancePrice}/day
+                                  </span>
+                                </div>
+                              )}
+                              {selectedTrainer.disciplines.western && (
+                                <div className="flex items-center justify-between">
+                                  <Checkbox
+                                    checked={selectedServices.disciplines.western}
+                                    onChange={(e) => handleServiceChange('disciplines', 'western', e.target.checked)}
+                                  >
+                                    <span className="text-sm">Western</span>
+                                  </Checkbox>
+                                  <span className="text-sm font-medium text-blue-700">
+                                    ${selectedTrainer.disciplines.westernPrice}/day
+                                  </span>
+                                </div>
+                              )}
+                              {selectedTrainer.disciplines.vaulting && (
+                                <div className="flex items-center justify-between">
+                                  <Checkbox
+                                    checked={selectedServices.disciplines.vaulting}
+                                    onChange={(e) => handleServiceChange('disciplines', 'vaulting', e.target.checked)}
+                                  >
+                                    <span className="text-sm">Vaulting</span>
+                                  </Checkbox>
+                                  <span className="text-sm font-medium text-blue-700">
+                                    ${selectedTrainer.disciplines.vaultingPrice}/day
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </Col>
+                      )}
+
+                      {/* Training */}
+                      {(selectedTrainer.training && Object.values(selectedTrainer.training).some(option => option)) && (
+                        <Col xs={24} lg={12}>
+                          <div className="border rounded-lg p-4 bg-green-50 h-full">
+                            <h5 className="font-semibold text-green-800 mb-3">Training (Per Day)</h5>
+                            <div className="space-y-2">
+                              {selectedTrainer.training.onLocationLessons && (
+                                <div className="flex items-center justify-between">
+                                  <Checkbox
+                                    checked={selectedServices.training.onLocationLessons}
+                                    onChange={(e) => handleServiceChange('training', 'onLocationLessons', e.target.checked)}
+                                  >
+                                    <span className="text-sm">On Location Lessons</span>
+                                  </Checkbox>
+                                  <span className="text-sm font-medium text-green-700">
+                                    ${selectedTrainer.training.onLocationLessonsPrice}/day
+                                  </span>
+                                </div>
+                              )}
+                              {selectedTrainer.training.lessonsOnTrainersLocation && (
+                                <div className="flex items-center justify-between">
+                                  <Checkbox
+                                    checked={selectedServices.training.lessonsOnTrainersLocation}
+                                    onChange={(e) => handleServiceChange('training', 'lessonsOnTrainersLocation', e.target.checked)}
+                                  >
+                                    <span className="text-sm">Lessons on Trainer's Location</span>
+                                  </Checkbox>
+                                  <span className="text-sm font-medium text-green-700">
+                                    ${selectedTrainer.training.lessonsOnTrainersLocationPrice}/day
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </Col>
+                      )}
+
+                      {/* Competition Coaching */}
+                      {(selectedTrainer.competitionCoaching && Object.values(selectedTrainer.competitionCoaching).some(option => option)) && (
+                        <Col xs={24} lg={12}>
+                          <div className="border rounded-lg p-4 bg-purple-50 h-full">
+                            <h5 className="font-semibold text-purple-800 mb-3">Competition Coaching (Per Day)</h5>
+                            <div className="space-y-2">
+                              {selectedTrainer.competitionCoaching.onLocationCoaching && (
+                                <div className="flex items-center justify-between">
+                                  <Checkbox
+                                    checked={selectedServices.competitionCoaching.onLocationCoaching}
+                                    onChange={(e) => handleServiceChange('competitionCoaching', 'onLocationCoaching', e.target.checked)}
+                                  >
+                                    <span className="text-sm">On Location Coaching</span>
+                                  </Checkbox>
+                                  <span className="text-sm font-medium text-purple-700">
+                                    ${selectedTrainer.competitionCoaching.onLocationCoachingPrice}/day
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </Col>
+                      )}
+                    </Row>
+                  </div>
+                )}
+
+                {/* Price Display */}
+                {bookingType && selectedDateRange && (
+                  <div className="mb-4 p-4 bg-brand/5 rounded-lg border border-brand/20 mt-3">
+                    <h4 className="font-semibold text-gray-800 mb-2">Booking Summary:</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Booking Type:</span>
+                        <span className="font-medium capitalize">{bookingType}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Date Range:</span>
+                        <span className="font-medium">
+                          {selectedDateRange[0].format('MMM DD')} - {selectedDateRange[1].format('MMM DD, YYYY')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Number of Days:</span>
+                        <span className="font-medium">{getNumberOfDays()} days</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Base Price per {bookingType}:</span>
+                        <span className="font-bold text-brand">${getPricePerUnit().toFixed(2)}</span>
+                      </div>
+                      
+                      {/* Additional Services Breakdown */}
+                      {getAdditionalServiceCosts() > 0 && (
+                        <div className="pt-2 border-t border-gray-200">
+                          <div className="text-sm text-gray-600 mb-2">Additional Services:</div>
+                          {selectedServices.disciplines.dressage && selectedTrainer.disciplines?.dressage && (
+                            <div className="flex justify-between text-sm">
+                              <span>Dressage × {getNumberOfDays()} days:</span>
+                              <span>${((selectedTrainer.disciplines.dressagePrice || 0) * getNumberOfDays()).toFixed(2)}</span>
+                            </div>
+                          )}
+                          {selectedServices.disciplines.showJumping && selectedTrainer.disciplines?.showJumping && (
+                            <div className="flex justify-between text-sm">
+                              <span>Show Jumping × {getNumberOfDays()} days:</span>
+                              <span>${((selectedTrainer.disciplines.showJumpingPrice || 0) * getNumberOfDays()).toFixed(2)}</span>
+                            </div>
+                          )}
+                          {selectedServices.disciplines.eventing && selectedTrainer.disciplines?.eventing && (
+                            <div className="flex justify-between text-sm">
+                              <span>Eventing × {getNumberOfDays()} days:</span>
+                              <span>${((selectedTrainer.disciplines.eventingPrice || 0) * getNumberOfDays()).toFixed(2)}</span>
+                            </div>
+                          )}
+                          {selectedServices.disciplines.endurance && selectedTrainer.disciplines?.endurance && (
+                            <div className="flex justify-between text-sm">
+                              <span>Endurance × {getNumberOfDays()} days:</span>
+                              <span>${((selectedTrainer.disciplines.endurancePrice || 0) * getNumberOfDays()).toFixed(2)}</span>
+                            </div>
+                          )}
+                          {selectedServices.disciplines.western && selectedTrainer.disciplines?.western && (
+                            <div className="flex justify-between text-sm">
+                              <span>Western × {getNumberOfDays()} days:</span>
+                              <span>${((selectedTrainer.disciplines.westernPrice || 0) * getNumberOfDays()).toFixed(2)}</span>
+                            </div>
+                          )}
+                          {selectedServices.disciplines.vaulting && selectedTrainer.disciplines?.vaulting && (
+                            <div className="flex justify-between text-sm">
+                              <span>Vaulting × {getNumberOfDays()} days:</span>
+                              <span>${((selectedTrainer.disciplines.vaultingPrice || 0) * getNumberOfDays()).toFixed(2)}</span>
+                            </div>
+                          )}
+                          {selectedServices.training.onLocationLessons && selectedTrainer.training?.onLocationLessons && (
+                            <div className="flex justify-between text-sm">
+                              <span>On Location Lessons × {getNumberOfDays()} days:</span>
+                              <span>${((selectedTrainer.training.onLocationLessonsPrice || 0) * getNumberOfDays()).toFixed(2)}</span>
+                            </div>
+                          )}
+                          {selectedServices.training.lessonsOnTrainersLocation && selectedTrainer.training?.lessonsOnTrainersLocation && (
+                            <div className="flex justify-between text-sm">
+                              <span>Lessons on Trainer's Location × {getNumberOfDays()} days:</span>
+                              <span>${((selectedTrainer.training.lessonsOnTrainersLocationPrice || 0) * getNumberOfDays()).toFixed(2)}</span>
+                            </div>
+                          )}
+                          {selectedServices.competitionCoaching.onLocationCoaching && selectedTrainer.competitionCoaching?.onLocationCoaching && (
+                            <div className="flex justify-between text-sm">
+                              <span>On Location Coaching × {getNumberOfDays()} days:</span>
+                              <span>${((selectedTrainer.competitionCoaching.onLocationCoachingPrice || 0) * getNumberOfDays()).toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between text-sm font-medium pt-1 border-t border-gray-200">
+                            <span>Additional Services Total:</span>
+                            <span>${getAdditionalServiceCosts().toFixed(2)}</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="pt-2 border-t border-gray-200">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-gray-800">Total Price:</span>
+                          <span className="text-xl font-bold text-brand">${calculateTotalPrice().toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <Form.Item>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    size="large"
+                    loading={loading}
+                    className="w-full mt-4"
+                    disabled={!bookingType || !selectedDateRange}
+                  >
+                    Book Training Session (${calculateTotalPrice().toFixed(2)})
+                  </Button>
+                </Form.Item>
+              </Form>
             </Card>
           </Col>
         </Row>

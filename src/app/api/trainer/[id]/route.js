@@ -150,7 +150,11 @@ export async function PUT(req, { params }) {
       userId, 
       experience, 
       Experience, 
-      status 
+      status,
+      disciplines,
+      training,
+      competitionCoaching,
+      diplomas
     } = body || {};
 
     // Handle both experience and Experience for backward compatibility
@@ -224,6 +228,11 @@ export async function PUT(req, { params }) {
     }
     if (experienceValue !== undefined) update.Experience = String(experienceValue).trim();
     if (status !== undefined) update.status = status;
+    // New fields
+    if (disciplines !== undefined) update.disciplines = disciplines;
+    if (training !== undefined) update.training = training;
+    if (competitionCoaching !== undefined) update.competitionCoaching = competitionCoaching;
+    if (diplomas !== undefined) update.diplomas = Array.isArray(diplomas) ? diplomas.filter(d => d && d.trim()) : [];
 
     const trainer = await Trainer.findByIdAndUpdate(id, update, { 
       new: true, 

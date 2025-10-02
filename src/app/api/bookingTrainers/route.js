@@ -134,6 +134,7 @@ import connectDB from "@/lib/db";
 import BookingTrainer from "@/models/BookingTrainer";
 import User from "@/models/User";
 import Trainer from "@/models/Trainer";
+import mongoose from "mongoose";
 
 async function parseRequestBody(req) {
   const contentType = req.headers.get("content-type") || "";
@@ -313,13 +314,48 @@ export async function POST(req) {
       endDate,
       price,
       totalPrice,
-      clientId
+      clientId,
+      basePrice,
+      additionalServices,
+      servicePriceDetails,
+      additionalServiceCosts,
+      numberOfDays,
+      ratingUserId
     } = body;
 
     // Validate required fields
-    if (!userId || !trainerId || !bookingType || !startDate || !price || !totalPrice || !clientId) {
+    if (!userId || !trainerId || !bookingType || !startDate || !clientId) {
       return NextResponse.json(
-        { success: false, message: "Missing required fields" },
+        { success: false, message: "Missing required fields: userId, trainerId, bookingType, startDate, clientId" },
+        { status: 400 }
+      );
+    }
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return NextResponse.json(
+        { success: false, message: "Invalid userId format" },
+        { status: 400 }
+      );
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(trainerId)) {
+      return NextResponse.json(
+        { success: false, message: "Invalid trainerId format" },
+        { status: 400 }
+      );
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(clientId)) {
+      return NextResponse.json(
+        { success: false, message: "Invalid clientId format" },
+        { status: 400 }
+      );
+    }
+
+    if (ratingUserId && !mongoose.Types.ObjectId.isValid(ratingUserId)) {
+      return NextResponse.json(
+        { success: false, message: "Invalid ratingUserId format" },
         { status: 400 }
       );
     }
@@ -351,9 +387,21 @@ export async function POST(req) {
 
 
     // Validate prices
-    if (price < 0 || totalPrice < 0) {
+    const finalBasePrice = basePrice || price || 0;
+    const finalTotalPrice = totalPrice || 0;
+    const finalAdditionalServiceCosts = additionalServiceCosts || 0;
+    const finalNumberOfDays = numberOfDays || 1;
+
+    if (finalBasePrice < 0 || finalTotalPrice < 0 || finalAdditionalServiceCosts < 0) {
       return NextResponse.json(
         { success: false, message: "Prices cannot be negative" },
+        { status: 400 }
+      );
+    }
+
+    if (finalNumberOfDays < 1) {
+      return NextResponse.json(
+        { success: false, message: "Number of days must be at least 1" },
         { status: 400 }
       );
     }
@@ -377,16 +425,52 @@ export async function POST(req) {
     }
 
     // Create new booking
-    const newBooking = new BookingTrainer({
+    const bookingData = {
       userId,
       trainerId,
       bookingType,
       startDate: start,
       endDate: end,
-      price,
-      totalPrice,
-      clientId
-    });
+      basePrice: finalBasePrice,
+      additionalServices: additionalServices || {},
+      servicePriceDetails: servicePriceDetails || {},
+      additionalServiceCosts: finalAdditionalServiceCosts,
+      totalPrice: finalTotalPrice,
+      numberOfDays: finalNumberOfDays,
+      clientId,
+      bookingDate: new Date(),
+      price: finalBasePrice // Legacy field for backward compatibility
+    };
+
+    // Only add ratinguserid if ratingUserId is provided
+    if (ratingUserId) {
+      bookingData.ratinguserid = ratingUserId;
+    }
+
+    console.log('Creating trainer booking with data:', JSON.stringify(bookingData, null, 2));
+    console.log('Additional services:', JSON.stringify(additionalServices, null, 2));
+    console.log('Service price details:', JSON.stringify(servicePriceDetails, null, 2));
+
+    const newBooking = new BookingTrainer(bookingData);
+
+    // Validate the booking before saving
+    const validationError = newBooking.validateSync();
+    if (validationError) {
+      console.error('Validation errors:', validationError.errors);
+      const errorMessages = Object.keys(validationError.errors).map(key => ({
+        field: key,
+        message: validationError.errors[key].message
+      }));
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Validation failed",
+          errors: errorMessages,
+          rawErrors: validationError.errors
+        },
+        { status: 400 }
+      );
+    }
 
     const savedBooking = await newBooking.save();
 
@@ -394,7 +478,8 @@ export async function POST(req) {
     const populatedBooking = await BookingTrainer.findById(savedBooking._id)
       .populate("userId", "firstName lastName email phoneNumber")
       .populate("clientId", "firstName lastName email phoneNumber _id")
-      .populate("trainerId", "title details price schedule Experience images location coordinates Rating noofRatingCustomers");
+      .populate("trainerId", "title details price schedule Experience images location coordinates Rating noofRatingCustomers")
+      .populate("ratinguserid", "firstName lastName email phoneNumber _id");
 
     return NextResponse.json(
       {

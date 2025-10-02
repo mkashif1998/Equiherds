@@ -150,7 +150,11 @@ export async function POST(req) {
       experience, 
       status, 
       location, 
-      coordinates 
+      coordinates,
+      disciplines,
+      training,
+      competitionCoaching,
+      diplomas
     } = body || {};
 
     // Validate all required fields according to schema
@@ -217,6 +221,11 @@ export async function POST(req) {
       },
       status: status || "active",
       images: Array.isArray(images) ? images.filter(img => img && img.trim()) : images ? [String(images).trim()] : [],
+      // New fields
+      disciplines: disciplines || {},
+      training: training || {},
+      competitionCoaching: competitionCoaching || {},
+      diplomas: Array.isArray(diplomas) ? diplomas.filter(d => d && d.trim()) : []
     });
 
     // Populate the userId field before returning

@@ -643,90 +643,211 @@ export default function Client() {
                         <div className="space-y-3">
                           <h5 className="font-medium text-gray-700">Additional Services:</h5>
                           
-                          {/* Short-term Stay */}
-                          {selectedBooking.additionalServices.shortTermStay?.selected && selectedBooking.servicePriceDetails.shortTermStay && (
-                            <div className="bg-blue-50 p-3 rounded-lg">
-                              <div className="flex justify-between items-center">
-                                <span className="text-sm text-blue-800">
-                                  Short-term Stay ({formatServiceName(selectedBooking.additionalServices.shortTermStay.selected)})
-                                </span>
-                                <span className="text-sm font-medium text-blue-700">
-                                  ${selectedBooking.servicePriceDetails.shortTermStay.pricePerDay}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.shortTermStay.price}
-                                </span>
-                              </div>
-                            </div>
+                          {/* Stable Services (for stable bookings) */}
+                          {activeTab === "stable" && (
+                            <>
+                              {/* Short-term Stay */}
+                              {selectedBooking.additionalServices.shortTermStay?.selected && selectedBooking.servicePriceDetails.shortTermStay && (
+                                <div className="bg-blue-50 p-3 rounded-lg">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-blue-800">
+                                      Short-term Stay ({formatServiceName(selectedBooking.additionalServices.shortTermStay.selected)})
+                                    </span>
+                                    <span className="text-sm font-medium text-blue-700">
+                                      ${selectedBooking.servicePriceDetails.shortTermStay.pricePerDay}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.shortTermStay.price}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Long-term Stay */}
+                              {selectedBooking.additionalServices.longTermStay?.selected && selectedBooking.servicePriceDetails.longTermStay && (
+                                <div className="bg-green-50 p-3 rounded-lg">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-green-800">
+                                      Long-term Stay ({formatServiceName(selectedBooking.additionalServices.longTermStay.selected)})
+                                    </span>
+                                    <span className="text-sm font-medium text-green-700">
+                                      ${selectedBooking.servicePriceDetails.longTermStay.pricePerDay}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.longTermStay.price}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Stallions */}
+                              {selectedBooking.additionalServices.stallionsAccepted && selectedBooking.servicePriceDetails.stallions && (
+                                <div className="bg-yellow-50 p-3 rounded-lg">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-yellow-800">Stallions Accepted</span>
+                                    <span className="text-sm font-medium text-yellow-700">
+                                      ${selectedBooking.servicePriceDetails.stallions.pricePerDay}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.stallions.price}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Event Pricing */}
+                              {selectedBooking.additionalServices.eventPricing && (
+                                <div className="space-y-2">
+                                  {selectedBooking.additionalServices.eventPricing.eventingCourse && selectedBooking.servicePriceDetails.eventPricing.eventingCoursePrice > 0 && (
+                                    <div className="bg-purple-50 p-3 rounded-lg">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-purple-800">Eventing Course</span>
+                                        <span className="text-sm font-medium text-purple-700">
+                                          ${selectedBooking.servicePriceDetails.eventPricing.eventingCoursePrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.eventPricing.eventingCoursePrice}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {selectedBooking.additionalServices.eventPricing.canterTrack && selectedBooking.servicePriceDetails.eventPricing.canterTrackPrice > 0 && (
+                                    <div className="bg-purple-50 p-3 rounded-lg">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-purple-800">Canter Track</span>
+                                        <span className="text-sm font-medium text-purple-700">
+                                          ${selectedBooking.servicePriceDetails.eventPricing.canterTrackPrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.eventPricing.canterTrackPrice}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {selectedBooking.additionalServices.eventPricing.jumpingTrack && selectedBooking.servicePriceDetails.eventPricing.jumpingTrackPrice > 0 && (
+                                    <div className="bg-purple-50 p-3 rounded-lg">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-purple-800">Jumping Track</span>
+                                        <span className="text-sm font-medium text-purple-700">
+                                          ${selectedBooking.servicePriceDetails.eventPricing.jumpingTrackPrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.eventPricing.jumpingTrackPrice}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {selectedBooking.additionalServices.eventPricing.dressageTrack && selectedBooking.servicePriceDetails.eventPricing.dressageTrackPrice > 0 && (
+                                    <div className="bg-purple-50 p-3 rounded-lg">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-purple-800">Dressage Track</span>
+                                        <span className="text-sm font-medium text-purple-700">
+                                          ${selectedBooking.servicePriceDetails.eventPricing.dressageTrackPrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.eventPricing.dressageTrackPrice}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </>
                           )}
 
-                          {/* Long-term Stay */}
-                          {selectedBooking.additionalServices.longTermStay?.selected && selectedBooking.servicePriceDetails.longTermStay && (
-                            <div className="bg-green-50 p-3 rounded-lg">
-                              <div className="flex justify-between items-center">
-                                <span className="text-sm text-green-800">
-                                  Long-term Stay ({formatServiceName(selectedBooking.additionalServices.longTermStay.selected)})
-                                </span>
-                                <span className="text-sm font-medium text-green-700">
-                                  ${selectedBooking.servicePriceDetails.longTermStay.pricePerDay}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.longTermStay.price}
-                                </span>
-                              </div>
-                            </div>
-                          )}
+                          {/* Trainer Services (for trainer bookings) */}
+                          {activeTab === "trainer" && (
+                            <>
+                              {/* Disciplines */}
+                              {selectedBooking.additionalServices.disciplines && (
+                                <div className="space-y-2">
+                                  <h6 className="font-medium text-gray-600 text-sm">Disciplines:</h6>
+                                  {selectedBooking.additionalServices.disciplines.dressage && selectedBooking.servicePriceDetails.disciplines.dressagePrice > 0 && (
+                                    <div className="bg-blue-50 p-3 rounded-lg">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-blue-800">Dressage</span>
+                                        <span className="text-sm font-medium text-blue-700">
+                                          ${selectedBooking.servicePriceDetails.disciplines.dressagePrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.disciplines.dressagePrice}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {selectedBooking.additionalServices.disciplines.showJumping && selectedBooking.servicePriceDetails.disciplines.showJumpingPrice > 0 && (
+                                    <div className="bg-blue-50 p-3 rounded-lg">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-blue-800">Show Jumping</span>
+                                        <span className="text-sm font-medium text-blue-700">
+                                          ${selectedBooking.servicePriceDetails.disciplines.showJumpingPrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.disciplines.showJumpingPrice}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {selectedBooking.additionalServices.disciplines.eventing && selectedBooking.servicePriceDetails.disciplines.eventingPrice > 0 && (
+                                    <div className="bg-blue-50 p-3 rounded-lg">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-blue-800">Eventing</span>
+                                        <span className="text-sm font-medium text-blue-700">
+                                          ${selectedBooking.servicePriceDetails.disciplines.eventingPrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.disciplines.eventingPrice}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {selectedBooking.additionalServices.disciplines.endurance && selectedBooking.servicePriceDetails.disciplines.endurancePrice > 0 && (
+                                    <div className="bg-blue-50 p-3 rounded-lg">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-blue-800">Endurance</span>
+                                        <span className="text-sm font-medium text-blue-700">
+                                          ${selectedBooking.servicePriceDetails.disciplines.endurancePrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.disciplines.endurancePrice}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {selectedBooking.additionalServices.disciplines.western && selectedBooking.servicePriceDetails.disciplines.westernPrice > 0 && (
+                                    <div className="bg-blue-50 p-3 rounded-lg">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-blue-800">Western</span>
+                                        <span className="text-sm font-medium text-blue-700">
+                                          ${selectedBooking.servicePriceDetails.disciplines.westernPrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.disciplines.westernPrice}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {selectedBooking.additionalServices.disciplines.vaulting && selectedBooking.servicePriceDetails.disciplines.vaultingPrice > 0 && (
+                                    <div className="bg-blue-50 p-3 rounded-lg">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-blue-800">Vaulting</span>
+                                        <span className="text-sm font-medium text-blue-700">
+                                          ${selectedBooking.servicePriceDetails.disciplines.vaultingPrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.disciplines.vaultingPrice}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
 
-                          {/* Stallions */}
-                          {selectedBooking.additionalServices.stallionsAccepted && selectedBooking.servicePriceDetails.stallions && (
-                            <div className="bg-yellow-50 p-3 rounded-lg">
-                              <div className="flex justify-between items-center">
-                                <span className="text-sm text-yellow-800">Stallions Accepted</span>
-                                <span className="text-sm font-medium text-yellow-700">
-                                  ${selectedBooking.servicePriceDetails.stallions.pricePerDay}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.stallions.price}
-                                </span>
-                              </div>
-                            </div>
-                          )}
+                              {/* Training */}
+                              {selectedBooking.additionalServices.training && (
+                                <div className="space-y-2">
+                                  <h6 className="font-medium text-gray-600 text-sm">Training:</h6>
+                                  {selectedBooking.additionalServices.training.onLocationLessons && selectedBooking.servicePriceDetails.training.onLocationLessonsPrice > 0 && (
+                                    <div className="bg-green-50 p-3 rounded-lg">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-green-800">On Location Lessons</span>
+                                        <span className="text-sm font-medium text-green-700">
+                                          ${selectedBooking.servicePriceDetails.training.onLocationLessonsPrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.training.onLocationLessonsPrice}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {selectedBooking.additionalServices.training.lessonsOnTrainersLocation && selectedBooking.servicePriceDetails.training.lessonsOnTrainersLocationPrice > 0 && (
+                                    <div className="bg-green-50 p-3 rounded-lg">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-green-800">Lessons on Trainer's Location</span>
+                                        <span className="text-sm font-medium text-green-700">
+                                          ${selectedBooking.servicePriceDetails.training.lessonsOnTrainersLocationPrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.training.lessonsOnTrainersLocationPrice}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
 
-                          {/* Event Pricing */}
-                          {selectedBooking.additionalServices.eventPricing && (
-                            <div className="space-y-2">
-                              {selectedBooking.additionalServices.eventPricing.eventingCourse && selectedBooking.servicePriceDetails.eventPricing.eventingCoursePrice > 0 && (
-                                <div className="bg-purple-50 p-3 rounded-lg">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-sm text-purple-800">Eventing Course</span>
-                                    <span className="text-sm font-medium text-purple-700">
-                                      ${selectedBooking.servicePriceDetails.eventPricing.eventingCoursePrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.eventPricing.eventingCoursePrice}
-                                    </span>
-                                  </div>
+                              {/* Competition Coaching */}
+                              {selectedBooking.additionalServices.competitionCoaching && (
+                                <div className="space-y-2">
+                                  <h6 className="font-medium text-gray-600 text-sm">Competition Coaching:</h6>
+                                  {selectedBooking.additionalServices.competitionCoaching.onLocationCoaching && selectedBooking.servicePriceDetails.competitionCoaching.onLocationCoachingPrice > 0 && (
+                                    <div className="bg-purple-50 p-3 rounded-lg">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-sm text-purple-800">On Location Coaching</span>
+                                        <span className="text-sm font-medium text-purple-700">
+                                          ${selectedBooking.servicePriceDetails.competitionCoaching.onLocationCoachingPrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.competitionCoaching.onLocationCoachingPrice}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               )}
-                              {selectedBooking.additionalServices.eventPricing.canterTrack && selectedBooking.servicePriceDetails.eventPricing.canterTrackPrice > 0 && (
-                                <div className="bg-purple-50 p-3 rounded-lg">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-sm text-purple-800">Canter Track</span>
-                                    <span className="text-sm font-medium text-purple-700">
-                                      ${selectedBooking.servicePriceDetails.eventPricing.canterTrackPrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.eventPricing.canterTrackPrice}
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
-                              {selectedBooking.additionalServices.eventPricing.jumpingTrack && selectedBooking.servicePriceDetails.eventPricing.jumpingTrackPrice > 0 && (
-                                <div className="bg-purple-50 p-3 rounded-lg">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-sm text-purple-800">Jumping Track</span>
-                                    <span className="text-sm font-medium text-purple-700">
-                                      ${selectedBooking.servicePriceDetails.eventPricing.jumpingTrackPrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.eventPricing.jumpingTrackPrice}
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
-                              {selectedBooking.additionalServices.eventPricing.dressageTrack && selectedBooking.servicePriceDetails.eventPricing.dressageTrackPrice > 0 && (
-                                <div className="bg-purple-50 p-3 rounded-lg">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-sm text-purple-800">Dressage Track</span>
-                                    <span className="text-sm font-medium text-purple-700">
-                                      ${selectedBooking.servicePriceDetails.eventPricing.dressageTrackPrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.eventPricing.dressageTrackPrice}
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                            </>
                           )}
 
                           {/* Additional Services Total */}

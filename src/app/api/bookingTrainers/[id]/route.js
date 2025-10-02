@@ -44,7 +44,8 @@ export async function GET(req, { params }) {
     const booking = await BookingTrainer.findById(id)
       .populate("userId", "firstName lastName email phoneNumber")
       .populate("clientId", "firstName lastName email phoneNumber _id")
-      .populate("trainerId", "firstName lastName email phoneNumber specialization experience");
+      .populate("trainerId", "title details price schedule Experience images location coordinates Rating noofRatingCustomers")
+      .populate("ratinguserid", "firstName lastName email phoneNumber _id");
 
     if (!booking) {
       return NextResponse.json(
@@ -97,7 +98,13 @@ export async function PUT(req, { params }) {
       endDate,
       price,
       totalPrice,
-      clientId
+      clientId,
+      basePrice,
+      additionalServices,
+      servicePriceDetails,
+      additionalServiceCosts,
+      numberOfDays,
+      ratingUserId
     } = body;
 
     // Validate dates if provided
@@ -123,9 +130,16 @@ export async function PUT(req, { params }) {
 
 
     // Validate prices if provided
-    if ((price && price < 0) || (totalPrice && totalPrice < 0)) {
+    if ((price && price < 0) || (totalPrice && totalPrice < 0) || (basePrice && basePrice < 0) || (additionalServiceCosts && additionalServiceCosts < 0)) {
       return NextResponse.json(
         { success: false, message: "Prices cannot be negative" },
+        { status: 400 }
+      );
+    }
+
+    if (numberOfDays && numberOfDays < 1) {
+      return NextResponse.json(
+        { success: false, message: "Number of days must be at least 1" },
         { status: 400 }
       );
     }
@@ -159,9 +173,16 @@ export async function PUT(req, { params }) {
     if (bookingType) updateData.bookingType = bookingType;
     if (startDate) updateData.startDate = new Date(startDate);
     if (endDate) updateData.endDate = new Date(endDate);
-    if (price) updateData.price = price;
+    if (basePrice !== undefined) updateData.basePrice = basePrice;
+    if (additionalServices !== undefined) updateData.additionalServices = additionalServices;
+    if (servicePriceDetails !== undefined) updateData.servicePriceDetails = servicePriceDetails;
+    if (additionalServiceCosts !== undefined) updateData.additionalServiceCosts = additionalServiceCosts;
     if (totalPrice) updateData.totalPrice = totalPrice;
+    if (numberOfDays) updateData.numberOfDays = numberOfDays;
     if (clientId) updateData.clientId = clientId;
+    if (ratingUserId) updateData.ratinguserid = ratingUserId;
+    // Legacy field for backward compatibility
+    if (price) updateData.price = price;
     // Update the booking
     const updatedBooking = await BookingTrainer.findByIdAndUpdate(
       id,
@@ -169,7 +190,8 @@ export async function PUT(req, { params }) {
       { new: true, runValidators: true }
     ).populate("userId", "firstName lastName email phoneNumber")
      .populate("clientId", "firstName lastName email phoneNumber _id")
-     .populate("trainerId", "firstName lastName email phoneNumber specialization experience");
+     .populate("trainerId", "title details price schedule Experience images location coordinates Rating noofRatingCustomers")
+     .populate("ratinguserid", "firstName lastName email phoneNumber _id");
 
     return NextResponse.json({
       success: true,
