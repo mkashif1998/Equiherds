@@ -1,6 +1,8 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "antd";
 import { getRequest } from "@/service";
 
 // StackedPolaroid component for exact image design match
@@ -72,12 +74,15 @@ const StackedPolaroid = ({
 };
 
 const OurServices = () => {
+  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTile, setSelectedTile] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [tiles, setTiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [viewAllLoading, setViewAllLoading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -86,7 +91,7 @@ const OurServices = () => {
         setError("");
         let data = await getRequest('/api/stables');
         if (!Array.isArray(data)) data = [];
-        const mapped = data.map((s) => {
+        const mapped = data.slice(0, 4).map((s) => {
           // PriceRate can be an array or object, handle both
           let priceRates = [];
           if (Array.isArray(s?.PriceRate) && s.PriceRate.length > 0) {
@@ -143,6 +148,34 @@ const OurServices = () => {
     setIsModalOpen(false);
     setSelectedTile(null);
     setCurrentImageIndex(0);
+  };
+
+  const handleBookStable = async () => {
+    if (!selectedTile?.id) return;
+    
+    setBookingLoading(true);
+    try {
+      // Simulate a small delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 500));
+      router.push(`/bookingStables?stableId=${selectedTile.id}`);
+    } catch (error) {
+      console.error('Navigation error:', error);
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
+  const handleViewAll = async () => {
+    setViewAllLoading(true);
+    try {
+      // Simulate a small delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 500));
+      router.push('/services?type=stables');
+    } catch (error) {
+      console.error('Navigation error:', error);
+    } finally {
+      setViewAllLoading(false);
+    }
   };
 
   const selectImage = (index) => {
@@ -263,17 +296,26 @@ const OurServices = () => {
                   </div>
                 )}
               </div> */}
-              <button onClick={() => openModal(tile)} className="secondary cursor-pointer font-medium text-sm transition-colors duration-200 border border-secondary rounded p-2">
+              <Button 
+                onClick={() => openModal(tile)} 
+                className="secondary font-medium text-sm transition-colors duration-200 border border-secondary rounded p-2 cursor-pointer"
+              >
                 View Details
-              </button>
+              </Button>
             </div>
           ))}
         </div>
 
         <div className="text-center">
-          <button className="bg-secondary text-white px-8 py-3 rounded-md hover:bg-gray-900 transition-colors duration-200 font-medium text-lg cursor-pointer">
-            View All Programs
-          </button>
+          <Button 
+            onClick={handleViewAll}
+            loading={viewAllLoading}
+            type="primary"
+            className="bg-secondary text-white px-8 py-3 rounded-md transition-colors duration-200 font-medium text-lg cursor-pointer"
+            size="large"
+          >
+            View All
+          </Button>
         </div>
       </div>
 
@@ -423,17 +465,23 @@ const OurServices = () => {
 
                   <div className="pt-4 border-t border-gray-200">
                     <div className="flex flex-col gap-3">
-                      <button 
-                        className="w-full px-6 py-3 bg-secondary text-white rounded-lg hover:bg-gray-900 transition-colors duration-200 font-medium"
+                      <Button 
+                        onClick={handleBookStable}
+                        type="primary"
+                        loading={bookingLoading}
+                        className="w-full px-6 py-3 bg-secondary text-white rounded-lg transition-colors duration-200 font-medium cursor-pointer"
+                        block
                       >
-                        Book Your Stable
-                      </button>
-                      <button 
+                        Book Stable
+                      </Button>
+                      <Button 
                         onClick={closeModal} 
-                        className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                        type="default"
+                        className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg transition-colors duration-200 cursor-pointer"
+                        block
                       >
                         Close
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>

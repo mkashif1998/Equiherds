@@ -16,7 +16,7 @@ const trainerSchema = new mongoose.Schema({
   title: { type: String, required: true },
   details: { type: String, required: true },
   price: { type: Number, required: true },
-  schedule: { type: scheduleSchema, required: true },
+  schedule:  [scheduleSchema],
   Experience: { type: String, required: true },
   Rating: { type: Number, required: false },
   noofRatingCustomers: { type: Number, required: false },

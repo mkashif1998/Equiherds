@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Edit, Trash, Plus, X } from "lucide-react";
+import { Checkbox } from "antd";
 import { getRequest, postRequest, putRequest, deleteRequest, uploadFiles } from "@/service";
 import { getUserData } from "@/app/utils/localStorage";
 import LocationPicker from "../components/LocationPicker";
@@ -47,6 +48,43 @@ export default function Stables() {
     slots: [],
     priceRates: [],
     status: "active",
+    // Short term stay pricing
+    shortTermStay: {
+      inStableStraw: false,
+      inStableShavings: false,
+      inFieldAlone: false,
+      inFieldHerd: false,
+      inStableStrawPrice: "",
+      inStableShavingsPrice: "",
+      inFieldAlonePrice: "",
+      inFieldHerdPrice: ""
+    },
+    // Long term stay options
+    longTermStay: {
+      inStableStraw: false,
+      inStableShavings: false,
+      inFieldAlone: false,
+      inFieldHerd: false,
+      // Long term stay pricing
+      inStableStrawPrice: "",
+      inStableShavingsPrice: "",
+      inFieldAlonePrice: "",
+      inFieldHerdPrice: ""
+    },
+    // Stallions
+    stallionsAccepted: false,
+    stallionsPrice: "",
+    // Event pricing
+    eventPricing: {
+      eventingCourse: false,
+      canterTrack: false,
+      jumpingTrack: false,
+      dressageTrack: false,
+      eventingCoursePrice: "",
+      canterTrackPrice: "",
+      jumpingTrackPrice: "",
+      dressageTrackPrice: ""
+    }
   });
   const [imagePreviews, setImagePreviews] = useState([]);
   const [slotInput, setSlotInput] = useState({
@@ -64,6 +102,43 @@ export default function Stables() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCheckboxChange = (fieldPath, checked) => {
+    const pathParts = fieldPath.split('.');
+    
+    if (pathParts.length === 2) {
+      const [section, field] = pathParts;
+      setForm((prev) => ({
+        ...prev,
+        [section]: {
+          inStableStraw: false,
+          inStableShavings: false,
+          inFieldAlone: false,
+          inFieldHerd: false,
+          inStableStrawPrice: "",
+          inStableShavingsPrice: "",
+          inFieldAlonePrice: "",
+          inFieldHerdPrice: "",
+          eventingCourse: false,
+          canterTrack: false,
+          jumpingTrack: false,
+          dressageTrack: false,
+          eventingCoursePrice: "",
+          canterTrackPrice: "",
+          jumpingTrackPrice: "",
+          dressageTrackPrice: "",
+          ...prev[section],
+          [field]: checked
+        }
+      }));
+    } else if (fieldPath === 'stallionsAccepted') {
+      setForm((prev) => ({
+        ...prev,
+        stallionsAccepted: checked,
+        stallionsPrice: checked ? prev.stallionsPrice : ""
+      }));
+    }
   };
 
   const handleLocationChange = (coordinates) => {
@@ -199,6 +274,40 @@ export default function Stables() {
               endTime: String(s?.endTime || ""),
             }))
           : [],
+        // New fields
+        shortTermStay: {
+          inStableStraw: Boolean(form.shortTermStay.inStableStraw),
+          inStableShavings: Boolean(form.shortTermStay.inStableShavings),
+          inFieldAlone: Boolean(form.shortTermStay.inFieldAlone),
+          inFieldHerd: Boolean(form.shortTermStay.inFieldHerd),
+          inStableStrawPrice: form.shortTermStay.inStableStraw && form.shortTermStay.inStableStrawPrice ? Number(form.shortTermStay.inStableStrawPrice) : null,
+          inStableShavingsPrice: form.shortTermStay.inStableShavings && form.shortTermStay.inStableShavingsPrice ? Number(form.shortTermStay.inStableShavingsPrice) : null,
+          inFieldAlonePrice: form.shortTermStay.inFieldAlone && form.shortTermStay.inFieldAlonePrice ? Number(form.shortTermStay.inFieldAlonePrice) : null,
+          inFieldHerdPrice: form.shortTermStay.inFieldHerd && form.shortTermStay.inFieldHerdPrice ? Number(form.shortTermStay.inFieldHerdPrice) : null
+        },
+        longTermStay: {
+          inStableStraw: Boolean(form.longTermStay.inStableStraw),
+          inStableShavings: Boolean(form.longTermStay.inStableShavings),
+          inFieldAlone: Boolean(form.longTermStay.inFieldAlone),
+          inFieldHerd: Boolean(form.longTermStay.inFieldHerd),
+          // Long term stay pricing
+          inStableStrawPrice: form.longTermStay.inStableStraw && form.longTermStay.inStableStrawPrice ? Number(form.longTermStay.inStableStrawPrice) : null,
+          inStableShavingsPrice: form.longTermStay.inStableShavings && form.longTermStay.inStableShavingsPrice ? Number(form.longTermStay.inStableShavingsPrice) : null,
+          inFieldAlonePrice: form.longTermStay.inFieldAlone && form.longTermStay.inFieldAlonePrice ? Number(form.longTermStay.inFieldAlonePrice) : null,
+          inFieldHerdPrice: form.longTermStay.inFieldHerd && form.longTermStay.inFieldHerdPrice ? Number(form.longTermStay.inFieldHerdPrice) : null
+        },
+        stallionsAccepted: Boolean(form.stallionsAccepted),
+        stallionsPrice: form.stallionsAccepted && form.stallionsPrice ? Number(form.stallionsPrice) : null,
+        eventPricing: {
+          eventingCourse: Boolean(form.eventPricing.eventingCourse),
+          canterTrack: Boolean(form.eventPricing.canterTrack),
+          jumpingTrack: Boolean(form.eventPricing.jumpingTrack),
+          dressageTrack: Boolean(form.eventPricing.dressageTrack),
+          eventingCoursePrice: form.eventPricing.eventingCourse && form.eventPricing.eventingCoursePrice ? Number(form.eventPricing.eventingCoursePrice) : null,
+          canterTrackPrice: form.eventPricing.canterTrack && form.eventPricing.canterTrackPrice ? Number(form.eventPricing.canterTrackPrice) : null,
+          jumpingTrackPrice: form.eventPricing.jumpingTrack && form.eventPricing.jumpingTrackPrice ? Number(form.eventPricing.jumpingTrackPrice) : null,
+          dressageTrackPrice: form.eventPricing.dressageTrack && form.eventPricing.dressageTrackPrice ? Number(form.eventPricing.dressageTrackPrice) : null
+        }
       };
 
       // Safety: ensure no stray top-level fields leak into payload
@@ -296,6 +405,39 @@ export default function Stables() {
         slots: Array.isArray(s?.Slotes)
           ? s.Slotes.map((sl) => ({ day: sl?.date || "", startTime: sl?.startTime || "", endTime: sl?.endTime || "" }))
           : [],
+        // New fields
+        shortTermStay: s?.shortTermStay || {
+          inStableStraw: false,
+          inStableShavings: false,
+          inFieldAlone: false,
+          inFieldHerd: false,
+          inStableStrawPrice: "",
+          inStableShavingsPrice: "",
+          inFieldAlonePrice: "",
+          inFieldHerdPrice: ""
+        },
+        longTermStay: s?.longTermStay || {
+          inStableStraw: false,
+          inStableShavings: false,
+          inFieldAlone: false,
+          inFieldHerd: false,
+          inStableStrawPrice: "",
+          inStableShavingsPrice: "",
+          inFieldAlonePrice: "",
+          inFieldHerdPrice: ""
+        },
+        stallionsAccepted: s?.stallionsAccepted || false,
+        stallionsPrice: s?.stallionsPrice || "",
+        eventPricing: s?.eventPricing || {
+          eventingCourse: false,
+          canterTrack: false,
+          jumpingTrack: false,
+          dressageTrack: false,
+          eventingCoursePrice: "",
+          canterTrackPrice: "",
+          jumpingTrackPrice: "",
+          dressageTrackPrice: ""
+        }
       });
       });
       setStables(normalized);
@@ -410,6 +552,139 @@ export default function Stables() {
                 </ul>
               </div>
             )}
+            
+            {/* Short Term Stay Pricing */}
+            {(stable.shortTermStay && Object.values(stable.shortTermStay).some(option => option)) && (
+              <div className="mt-2">
+                <span className="text-xs font-semibold text-brand/70">Short Term Stay:</span>
+                <div className="text-xs text-brand/80 mt-1 space-y-1">
+                  {stable.shortTermStay.inStableStraw && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">Stable (straw)</span>
+                      {stable.shortTermStay.inStableStrawPrice && (
+                        <span className="text-blue-700 font-medium">${Number(stable.shortTermStay.inStableStrawPrice).toLocaleString()}/day</span>
+                      )}
+                    </div>
+                  )}
+                  {stable.shortTermStay.inStableShavings && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">Stable (shavings)</span>
+                      {stable.shortTermStay.inStableShavingsPrice && (
+                        <span className="text-blue-700 font-medium">${Number(stable.shortTermStay.inStableShavingsPrice).toLocaleString()}/day</span>
+                      )}
+                    </div>
+                  )}
+                  {stable.shortTermStay.inFieldAlone && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">Field (alone)</span>
+                      {stable.shortTermStay.inFieldAlonePrice && (
+                        <span className="text-blue-700 font-medium">${Number(stable.shortTermStay.inFieldAlonePrice).toLocaleString()}/day</span>
+                      )}
+                    </div>
+                  )}
+                  {stable.shortTermStay.inFieldHerd && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">Field (herd)</span>
+                      {stable.shortTermStay.inFieldHerdPrice && (
+                        <span className="text-blue-700 font-medium">${Number(stable.shortTermStay.inFieldHerdPrice).toLocaleString()}/day</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Long Term Stay Options */}
+            {(stable.longTermStay && Object.values(stable.longTermStay).some(option => option)) && (
+              <div className="mt-2">
+                <span className="text-xs font-semibold text-brand/70">Long Term Available:</span>
+                <div className="text-xs text-brand/80 mt-1 space-y-1">
+                  {stable.longTermStay.inStableStraw && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded">Stable (straw)</span>
+                      {stable.longTermStay.inStableStrawPrice && (
+                        <span className="text-green-700 font-medium">${Number(stable.longTermStay.inStableStrawPrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                  {stable.longTermStay.inStableShavings && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded">Stable (shavings)</span>
+                      {stable.longTermStay.inStableShavingsPrice && (
+                        <span className="text-green-700 font-medium">${Number(stable.longTermStay.inStableShavingsPrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                  {stable.longTermStay.inFieldAlone && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded">Field (alone)</span>
+                      {stable.longTermStay.inFieldAlonePrice && (
+                        <span className="text-green-700 font-medium">${Number(stable.longTermStay.inFieldAlonePrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                  {stable.longTermStay.inFieldHerd && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded">Field (herd)</span>
+                      {stable.longTermStay.inFieldHerdPrice && (
+                        <span className="text-green-700 font-medium">${Number(stable.longTermStay.inFieldHerdPrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Stallions */}
+            {stable.stallionsAccepted && (
+              <div className="mt-2">
+                <span className="text-xs font-semibold text-brand/70">Stallions:</span>
+                <span className="text-xs text-brand/80 ml-1">
+                  Accepted {stable.stallionsPrice ? `(+$${Number(stable.stallionsPrice).toLocaleString()})` : ''}
+                </span>
+              </div>
+            )}
+            
+            {/* Event Pricing */}
+            {(stable.eventPricing && Object.values(stable.eventPricing).some(option => option)) && (
+              <div className="mt-2">
+                <span className="text-xs font-semibold text-brand/70">Events:</span>
+                <div className="text-xs text-brand/80 mt-1 space-y-1">
+                  {stable.eventPricing.eventingCourse && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded">Eventing Course</span>
+                      {stable.eventPricing.eventingCoursePrice && (
+                        <span className="text-purple-700 font-medium">${Number(stable.eventPricing.eventingCoursePrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                  {stable.eventPricing.canterTrack && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded">Canter Track</span>
+                      {stable.eventPricing.canterTrackPrice && (
+                        <span className="text-purple-700 font-medium">${Number(stable.eventPricing.canterTrackPrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                  {stable.eventPricing.jumpingTrack && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded">Jumping Track</span>
+                      {stable.eventPricing.jumpingTrackPrice && (
+                        <span className="text-purple-700 font-medium">${Number(stable.eventPricing.jumpingTrackPrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                  {stable.eventPricing.dressageTrack && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded">Dressage Track</span>
+                      {stable.eventPricing.dressageTrackPrice && (
+                        <span className="text-purple-700 font-medium">${Number(stable.eventPricing.dressageTrackPrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             {stable.slots && stable.slots.length > 0 && (
               <div className="mt-2">
                 <span className="text-xs font-semibold text-brand/70">Slots:</span>
@@ -441,7 +716,7 @@ export default function Stables() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 overflow-x-hidden">
-          <div className="bg-white rounded-lg shadow-lg py-8 px-4 w-full max-w-2xl relative overflow-x-hidden">
+          <div className="bg-white rounded-lg shadow-lg py-8 px-4 w-full max-w-4xl relative overflow-x-hidden">
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={() => {
@@ -654,6 +929,316 @@ export default function Stables() {
                   </ul>
                 )}
               </div>
+              
+              {/* Stay Pricing - 4 Box Layout */}
+              <div className="border-t pt-4">
+                <h4 className="text-lg font-semibold text-brand mb-3">Stay Pricing</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Short Term Stay Pricing */}
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <h5 className="text-md font-semibold text-brand mb-3">Short Term Stay</h5>
+                    <div className="space-y-3">
+                      {/* In Stable (on straw) */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.shortTermStay?.inStableStraw || false}
+                          onChange={(e) => handleCheckboxChange('shortTermStay.inStableStraw', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">In Stable (on straw)</span>
+                        </Checkbox>
+                        {form.shortTermStay?.inStableStraw && (
+                          <input
+                            type="number"
+                            name="shortTermStay.inStableStrawPrice"
+                            value={form.shortTermStay?.inStableStrawPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                      
+                      {/* In Stable (on shavings) */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.shortTermStay?.inStableShavings || false}
+                          onChange={(e) => handleCheckboxChange('shortTermStay.inStableShavings', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">In Stable (on shavings)</span>
+                        </Checkbox>
+                        {form.shortTermStay?.inStableShavings && (
+                          <input
+                            type="number"
+                            name="shortTermStay.inStableShavingsPrice"
+                            value={form.shortTermStay?.inStableShavingsPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                      
+                      {/* In Field (alone) */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.shortTermStay?.inFieldAlone || false}
+                          onChange={(e) => handleCheckboxChange('shortTermStay.inFieldAlone', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">In Field (alone)</span>
+                        </Checkbox>
+                        {form.shortTermStay?.inFieldAlone && (
+                          <input
+                            type="number"
+                            name="shortTermStay.inFieldAlonePrice"
+                            value={form.shortTermStay?.inFieldAlonePrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                      
+                      {/* In Field (herd) */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.shortTermStay?.inFieldHerd || false}
+                          onChange={(e) => handleCheckboxChange('shortTermStay.inFieldHerd', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">In Field (herd)</span>
+                        </Checkbox>
+                        {form.shortTermStay?.inFieldHerd && (
+                          <input
+                            type="number"
+                            name="shortTermStay.inFieldHerdPrice"
+                            value={form.shortTermStay?.inFieldHerdPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Long Term Stay Options */}
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <h5 className="text-md font-semibold text-brand mb-3">Long Term Stay Options</h5>
+                    <div className="space-y-3">
+                      {/* In Stable (on straw) */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.longTermStay?.inStableStraw || false}
+                          onChange={(e) => handleCheckboxChange('longTermStay.inStableStraw', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">In Stable (on straw)</span>
+                        </Checkbox>
+                        {form.longTermStay?.inStableStraw && (
+                          <input
+                            type="number"
+                            name="longTermStay.inStableStrawPrice"
+                            value={form.longTermStay?.inStableStrawPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                      
+                      {/* In Stable (on shavings) */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.longTermStay?.inStableShavings || false}
+                          onChange={(e) => handleCheckboxChange('longTermStay.inStableShavings', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">In Stable (on shavings)</span>
+                        </Checkbox>
+                        {form.longTermStay?.inStableShavings && (
+                          <input
+                            type="number"
+                            name="longTermStay.inStableShavingsPrice"
+                            value={form.longTermStay?.inStableShavingsPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                      
+                      {/* In Field (alone) */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.longTermStay?.inFieldAlone || false}
+                          onChange={(e) => handleCheckboxChange('longTermStay.inFieldAlone', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">In Field (alone)</span>
+                        </Checkbox>
+                        {form.longTermStay?.inFieldAlone && (
+                          <input
+                            type="number"
+                            name="longTermStay.inFieldAlonePrice"
+                            value={form.longTermStay?.inFieldAlonePrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                      
+                      {/* In Field (herd) */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.longTermStay?.inFieldHerd || false}
+                          onChange={(e) => handleCheckboxChange('longTermStay.inFieldHerd', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">In Field (herd)</span>
+                        </Checkbox>
+                        {form.longTermStay?.inFieldHerd && (
+                          <input
+                            type="number"
+                            name="longTermStay.inFieldHerdPrice"
+                            value={form.longTermStay?.inFieldHerdPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+
+              {/* Additional Services - 2 Box Layout */}
+              <div className="border-t pt-4">
+                <h4 className="text-lg font-semibold text-brand mb-3">Additional Services</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Stallions */}
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <h5 className="text-md font-semibold text-brand mb-3">Stallions</h5>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.stallionsAccepted || false}
+                          onChange={(e) => handleCheckboxChange('stallionsAccepted', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">Stallions Accepted</span>
+                        </Checkbox>
+                        {form.stallionsAccepted && (
+                          <input
+                            type="number"
+                            name="stallionsPrice"
+                            value={form.stallionsPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Event Pricing */}
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <h5 className="text-md font-semibold text-brand mb-3">Event Pricing</h5>
+                    <div className="space-y-3">
+                      {/* Eventing Course */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.eventPricing?.eventingCourse || false}
+                          onChange={(e) => handleCheckboxChange('eventPricing.eventingCourse', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">Eventing Course</span>
+                        </Checkbox>
+                        {form.eventPricing?.eventingCourse && (
+                          <input
+                            type="number"
+                            name="eventPricing.eventingCoursePrice"
+                            value={form.eventPricing?.eventingCoursePrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                      
+                      {/* Canter Track */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.eventPricing?.canterTrack || false}
+                          onChange={(e) => handleCheckboxChange('eventPricing.canterTrack', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">Canter Track</span>
+                        </Checkbox>
+                        {form.eventPricing?.canterTrack && (
+                          <input
+                            type="number"
+                            name="eventPricing.canterTrackPrice"
+                            value={form.eventPricing?.canterTrackPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                      
+                      {/* Jumping Track */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.eventPricing?.jumpingTrack || false}
+                          onChange={(e) => handleCheckboxChange('eventPricing.jumpingTrack', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">Jumping Track</span>
+                        </Checkbox>
+                        {form.eventPricing?.jumpingTrack && (
+                          <input
+                            type="number"
+                            name="eventPricing.jumpingTrackPrice"
+                            value={form.eventPricing?.jumpingTrackPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                      
+                      {/* Dressage Track */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.eventPricing?.dressageTrack || false}
+                          onChange={(e) => handleCheckboxChange('eventPricing.dressageTrack', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">Dressage Track</span>
+                        </Checkbox>
+                        {form.eventPricing?.dressageTrack && (
+                          <input
+                            type="number"
+                            name="eventPricing.dressageTrackPrice"
+                            value={form.eventPricing?.dressageTrackPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <button
                 type="submit"
                 className="w-full py-2 rounded bg-[color:var(--primary)] text-white font-medium hover:bg-[color:var(--primary)]/90 transition"

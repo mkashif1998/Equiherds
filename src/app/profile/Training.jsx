@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Edit, Trash, Plus, X } from "lucide-react";
+import { Checkbox, Tag, Input } from "antd";
 import { getUserData } from "../utils/localStorage";
 import { postRequest, uploadFiles, deleteRequest, putRequest } from "@/service";
 import { toast } from "react-hot-toast";
@@ -51,6 +52,35 @@ export default function Trainer() {
     images: [],
     slots: [],
     status: "active",
+    // Disciplines
+    disciplines: {
+      dressage: false,
+      showJumping: false,
+      eventing: false,
+      endurance: false,
+      western: false,
+      vaulting: false,
+      dressagePrice: "",
+      showJumpingPrice: "",
+      eventingPrice: "",
+      endurancePrice: "",
+      westernPrice: "",
+      vaultingPrice: ""
+    },
+    // Training
+    training: {
+      onLocationLessons: false,
+      lessonsOnTrainersLocation: false,
+      onLocationLessonsPrice: "",
+      lessonsOnTrainersLocationPrice: ""
+    },
+    // Competition coaching
+    competitionCoaching: {
+      onLocationCoaching: false,
+      onLocationCoachingPrice: ""
+    },
+    // Diplomas
+    diplomas: []
   });
   const [imagePreviews, setImagePreviews] = useState([]);
   const [slotInput, setSlotInput] = useState({
@@ -58,6 +88,7 @@ export default function Trainer() {
     startTime: "",
     endTime: "",
   });
+  const [diplomaInput, setDiplomaInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -73,6 +104,56 @@ export default function Trainer() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCheckboxChange = (fieldPath, checked) => {
+    const pathParts = fieldPath.split('.');
+    
+    if (pathParts.length === 2) {
+      const [section, field] = pathParts;
+      setForm((prev) => ({
+        ...prev,
+        [section]: {
+          dressage: false,
+          showJumping: false,
+          eventing: false,
+          endurance: false,
+          western: false,
+          vaulting: false,
+          dressagePrice: "",
+          showJumpingPrice: "",
+          eventingPrice: "",
+          endurancePrice: "",
+          westernPrice: "",
+          vaultingPrice: "",
+          onLocationLessons: false,
+          lessonsOnTrainersLocation: false,
+          onLocationLessonsPrice: "",
+          lessonsOnTrainersLocationPrice: "",
+          onLocationCoaching: false,
+          onLocationCoachingPrice: "",
+          ...prev[section],
+          [field]: checked
+        }
+      }));
+    }
+  };
+
+  const handleAddDiploma = () => {
+    if (diplomaInput.trim() && !form.diplomas.includes(diplomaInput.trim())) {
+      setForm((prev) => ({
+        ...prev,
+        diplomas: [...prev.diplomas, diplomaInput.trim()]
+      }));
+      setDiplomaInput("");
+    }
+  };
+
+  const handleRemoveDiploma = (diplomaToRemove) => {
+    setForm((prev) => ({
+      ...prev,
+      diplomas: prev.diplomas.filter(diploma => diploma !== diplomaToRemove)
+    }));
   };
 
   const handleLocationChange = (coordinates) => {
@@ -97,9 +178,19 @@ export default function Trainer() {
     const userId = tokenData?.id || tokenData?.sub || tokenData?._id || null;
     if (!userId) return;
 
-    // Require at least one slot to map to API schedule schema
-    const scheduleSource = form.slots && form.slots.length > 0 ? form.slots[0] : slotInput;
-    if (!scheduleSource.day || !scheduleSource.startTime || !scheduleSource.endTime) return;
+    // Require at least one slot
+    const allSlots = form.slots && form.slots.length > 0 ? form.slots : [];
+    if (allSlots.length === 0 && (!slotInput.day || !slotInput.startTime || !slotInput.endTime)) {
+      toast.error("Please add at least one schedule slot.");
+      setSubmitting(false);
+      return;
+    }
+    
+    // Add current slotInput if it has values
+    const finalSlots = [...allSlots];
+    if (slotInput.day && slotInput.startTime && slotInput.endTime) {
+      finalSlots.push(slotInput);
+    }
 
     setSubmitting(true);
     try {
@@ -139,15 +230,10 @@ export default function Trainer() {
           lng: form.coordinates.lng
         } : null,
         price: Number(form.price),
-        Experience: form.Experience, // Experience is already included here
+        Experience: form.Experience,
         status: form.status || "active",
-        schedule: {
-          day: scheduleSource.day,
-          startTime: scheduleSource.startTime,
-          endTime: scheduleSource.endTime,
-        },
+        schedule: finalSlots, // Send all slots as array to schedule field
         images: uploadedUrls,
-        Experience: form.Experience, // Add Experience (capital E) as well
       };
 
       if (editingId) {
@@ -164,7 +250,7 @@ export default function Trainer() {
                   status: payload.status,
                   rating: s.rating || 0,
                   images: payload.images,
-                  slots: [payload.schedule],
+                  slots: payload.schedule,
                 }
               : s
           )
@@ -180,16 +266,52 @@ export default function Trainer() {
           status: payload.status,
           rating: 0,
           images: uploadedUrls,
-          slots: [payload.schedule],
+          slots: payload.schedule,
         };
         setStables((prev) => [newStable, ...prev]);
         toast.success("Trainer created");
       }
 
       setEditingId(null);
-      setForm({ title: "", details: "", location: "", coordinates: null, price: "", Experience: "", images: [], slots: [], status: "active" });
+      setForm({ 
+        title: "", 
+        details: "", 
+        location: "", 
+        coordinates: null, 
+        price: "", 
+        Experience: "", 
+        images: [], 
+        slots: [], 
+        status: "active",
+        disciplines: {
+          dressage: false,
+          showJumping: false,
+          eventing: false,
+          endurance: false,
+          western: false,
+          vaulting: false,
+          dressagePrice: "",
+          showJumpingPrice: "",
+          eventingPrice: "",
+          endurancePrice: "",
+          westernPrice: "",
+          vaultingPrice: ""
+        },
+        training: {
+          onLocationLessons: false,
+          lessonsOnTrainersLocation: false,
+          onLocationLessonsPrice: "",
+          lessonsOnTrainersLocationPrice: ""
+        },
+        competitionCoaching: {
+          onLocationCoaching: false,
+          onLocationCoachingPrice: ""
+        },
+        diplomas: []
+      });
       setImagePreviews([]);
       setSlotInput({ day: "", startTime: "", endTime: "" });
+      setDiplomaInput("");
       setPrevImages([]);
       setShowModal(false);
     } catch (err) {
@@ -235,10 +357,36 @@ export default function Trainer() {
       images: [],
       slots: stable.slots || [],
       status: stable.status || "active",
+      disciplines: stable.disciplines || {
+        dressage: false,
+        showJumping: false,
+        eventing: false,
+        endurance: false,
+        western: false,
+        vaulting: false,
+        dressagePrice: "",
+        showJumpingPrice: "",
+        eventingPrice: "",
+        endurancePrice: "",
+        westernPrice: "",
+        vaultingPrice: ""
+      },
+      training: stable.training || {
+        onLocationLessons: false,
+        lessonsOnTrainersLocation: false,
+        onLocationLessonsPrice: "",
+        lessonsOnTrainersLocationPrice: ""
+      },
+      competitionCoaching: stable.competitionCoaching || {
+        onLocationCoaching: false,
+        onLocationCoachingPrice: ""
+      },
+      diplomas: stable.diplomas || []
     });
     setImagePreviews(stable.images || []);
     setPrevImages(stable.images || []);
     setSlotInput({ day: "", startTime: "", endTime: "" });
+    setDiplomaInput("");
     setEditingId(stable.id);
     setShowModal(true);
   };
@@ -265,7 +413,32 @@ export default function Trainer() {
             status: t.status || "active",
             rating: 0,
             images: Array.isArray(t.images) ? t.images : [],
-            slots: t.schedule ? [t.schedule] : [],
+            slots: Array.isArray(t.schedule) ? t.schedule : [],
+            disciplines: t.disciplines || {
+              dressage: false,
+              showJumping: false,
+              eventing: false,
+              endurance: false,
+              western: false,
+              vaulting: false,
+              dressagePrice: "",
+              showJumpingPrice: "",
+              eventingPrice: "",
+              endurancePrice: "",
+              westernPrice: "",
+              vaultingPrice: ""
+            },
+            training: t.training || {
+              onLocationLessons: false,
+              lessonsOnTrainersLocation: false,
+              onLocationLessonsPrice: "",
+              lessonsOnTrainersLocationPrice: ""
+            },
+            competitionCoaching: t.competitionCoaching || {
+              onLocationCoaching: false,
+              onLocationCoachingPrice: ""
+            },
+            diplomas: Array.isArray(t.diplomas) ? t.diplomas : []
           }));
           console.log("Mapped trainer data:", mapped); // Debug log
           setStables(mapped);
@@ -395,6 +568,119 @@ export default function Trainer() {
                 </ul>
               </div>
             )}
+            {/* Disciplines */}
+            {(stable.disciplines && Object.values(stable.disciplines).some(option => option)) && (
+              <div className="mt-2">
+                <span className="text-xs font-semibold text-brand/70">Disciplines:</span>
+                <div className="text-xs text-brand/80 mt-1 space-y-1">
+                  {stable.disciplines.dressage && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">Dressage</span>
+                      {stable.disciplines.dressagePrice && (
+                        <span className="text-blue-700 font-medium">${Number(stable.disciplines.dressagePrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                  {stable.disciplines.showJumping && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded">Show Jumping</span>
+                      {stable.disciplines.showJumpingPrice && (
+                        <span className="text-green-700 font-medium">${Number(stable.disciplines.showJumpingPrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                  {stable.disciplines.eventing && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded">Eventing</span>
+                      {stable.disciplines.eventingPrice && (
+                        <span className="text-purple-700 font-medium">${Number(stable.disciplines.eventingPrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                  {stable.disciplines.endurance && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded">Endurance</span>
+                      {stable.disciplines.endurancePrice && (
+                        <span className="text-orange-700 font-medium">${Number(stable.disciplines.endurancePrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                  {stable.disciplines.western && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-red-100 text-red-800 px-2 py-1 rounded">Western</span>
+                      {stable.disciplines.westernPrice && (
+                        <span className="text-red-700 font-medium">${Number(stable.disciplines.westernPrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                  {stable.disciplines.vaulting && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-pink-100 text-pink-800 px-2 py-1 rounded">Vaulting</span>
+                      {stable.disciplines.vaultingPrice && (
+                        <span className="text-pink-700 font-medium">${Number(stable.disciplines.vaultingPrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Training */}
+            {(stable.training && Object.values(stable.training).some(option => option)) && (
+              <div className="mt-2">
+                <span className="text-xs font-semibold text-brand/70">Training:</span>
+                <div className="text-xs text-brand/80 mt-1 space-y-1">
+                  {stable.training.onLocationLessons && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded">On Location Lessons</span>
+                      {stable.training.onLocationLessonsPrice && (
+                        <span className="text-indigo-700 font-medium">${Number(stable.training.onLocationLessonsPrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                  {stable.training.lessonsOnTrainersLocation && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded">Lessons on Trainer's Location</span>
+                      {stable.training.lessonsOnTrainersLocationPrice && (
+                        <span className="text-teal-700 font-medium">${Number(stable.training.lessonsOnTrainersLocationPrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Competition Coaching */}
+            {(stable.competitionCoaching && Object.values(stable.competitionCoaching).some(option => option)) && (
+              <div className="mt-2">
+                <span className="text-xs font-semibold text-brand/70">Competition Coaching:</span>
+                <div className="text-xs text-brand/80 mt-1 space-y-1">
+                  {stable.competitionCoaching.onLocationCoaching && (
+                    <div className="flex items-center justify-between">
+                      <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded">On Location Coaching</span>
+                      {stable.competitionCoaching.onLocationCoachingPrice && (
+                        <span className="text-amber-700 font-medium">${Number(stable.competitionCoaching.onLocationCoachingPrice).toLocaleString()}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Diplomas */}
+            {stable.diplomas && stable.diplomas.length > 0 && (
+              <div className="mt-2">
+                <span className="text-xs font-semibold text-brand/70">Diplomas:</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {stable.diplomas.map((diploma, index) => (
+                    <span key={index} className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs">
+                      {diploma}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {stable.images && stable.images.length > 1 && (
               <div className="flex gap-1 mt-2">
                 {stable.images.slice(1, 4).map((img, idx) => (
@@ -414,14 +700,50 @@ export default function Trainer() {
       {/* Modal */}
       {showModal && (
          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 overflow-x-hidden">
-          <div className="bg-white rounded-lg shadow-lg py-8 px-4 w-full max-w-2xl relative overflow-x-hidden">
+          <div className="bg-white rounded-lg shadow-lg py-8 px-4 w-full max-w-4xl relative overflow-x-hidden">
             <button
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={() => {
                 setShowModal(false);
-                setForm({ title: "", details: "", location: "", coordinates: null, price: "", Experience: "", images: [], slots: [], status: "active" });
+                setForm({ 
+                  title: "", 
+                  details: "", 
+                  location: "", 
+                  coordinates: null, 
+                  price: "", 
+                  Experience: "", 
+                  images: [], 
+                  slots: [], 
+                  status: "active",
+                  disciplines: {
+                    dressage: false,
+                    showJumping: false,
+                    eventing: false,
+                    endurance: false,
+                    western: false,
+                    vaulting: false,
+                    dressagePrice: "",
+                    showJumpingPrice: "",
+                    eventingPrice: "",
+                    endurancePrice: "",
+                    westernPrice: "",
+                    vaultingPrice: ""
+                  },
+                  training: {
+                    onLocationLessons: false,
+                    lessonsOnTrainersLocation: false,
+                    onLocationLessonsPrice: "",
+                    lessonsOnTrainersLocationPrice: ""
+                  },
+                  competitionCoaching: {
+                    onLocationCoaching: false,
+                    onLocationCoachingPrice: ""
+                  },
+                  diplomas: []
+                });
                 setImagePreviews([]);
                 setSlotInput({ day: "", startTime: "", endTime: "" });
+                setDiplomaInput("");
                 setPrevImages([]);
               }}
               title="Close"
@@ -597,6 +919,263 @@ export default function Trainer() {
                   </div>
                 )}
               </div>
+              
+              {/* Disciplines Section */}
+              <div className="border-t pt-4">
+                <h4 className="text-lg font-semibold text-brand mb-3">Disciplines</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <div className="space-y-3">
+                      {/* Dressage */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.disciplines?.dressage || false}
+                          onChange={(e) => handleCheckboxChange('disciplines.dressage', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">Dressage</span>
+                        </Checkbox>
+                        {form.disciplines?.dressage && (
+                          <input
+                            type="number"
+                            name="disciplines.dressagePrice"
+                            value={form.disciplines?.dressagePrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                      
+                      {/* Show Jumping */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.disciplines?.showJumping || false}
+                          onChange={(e) => handleCheckboxChange('disciplines.showJumping', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">Show Jumping</span>
+                        </Checkbox>
+                        {form.disciplines?.showJumping && (
+                          <input
+                            type="number"
+                            name="disciplines.showJumpingPrice"
+                            value={form.disciplines?.showJumpingPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                      
+                      {/* Eventing */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.disciplines?.eventing || false}
+                          onChange={(e) => handleCheckboxChange('disciplines.eventing', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">Eventing</span>
+                        </Checkbox>
+                        {form.disciplines?.eventing && (
+                          <input
+                            type="number"
+                            name="disciplines.eventingPrice"
+                            value={form.disciplines?.eventingPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <div className="space-y-3">
+                      {/* Endurance */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.disciplines?.endurance || false}
+                          onChange={(e) => handleCheckboxChange('disciplines.endurance', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">Endurance</span>
+                        </Checkbox>
+                        {form.disciplines?.endurance && (
+                          <input
+                            type="number"
+                            name="disciplines.endurancePrice"
+                            value={form.disciplines?.endurancePrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                      
+                      {/* Western */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.disciplines?.western || false}
+                          onChange={(e) => handleCheckboxChange('disciplines.western', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">Western</span>
+                        </Checkbox>
+                        {form.disciplines?.western && (
+                          <input
+                            type="number"
+                            name="disciplines.westernPrice"
+                            value={form.disciplines?.westernPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                      
+                      {/* Vaulting */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.disciplines?.vaulting || false}
+                          onChange={(e) => handleCheckboxChange('disciplines.vaulting', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">Vaulting</span>
+                        </Checkbox>
+                        {form.disciplines?.vaulting && (
+                          <input
+                            type="number"
+                            name="disciplines.vaultingPrice"
+                            value={form.disciplines?.vaultingPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Training Section */}
+              <div className="border-t pt-4">
+                <h4 className="text-lg font-semibold text-brand mb-3">Training</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <div className="space-y-3">
+                      {/* On Location Lessons */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.training?.onLocationLessons || false}
+                          onChange={(e) => handleCheckboxChange('training.onLocationLessons', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">On Location Lessons</span>
+                        </Checkbox>
+                        {form.training?.onLocationLessons && (
+                          <input
+                            type="number"
+                            name="training.onLocationLessonsPrice"
+                            value={form.training?.onLocationLessonsPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                      
+                      {/* Lessons on Trainer's Location */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.training?.lessonsOnTrainersLocation || false}
+                          onChange={(e) => handleCheckboxChange('training.lessonsOnTrainersLocation', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">Lessons on Trainer's Location</span>
+                        </Checkbox>
+                        {form.training?.lessonsOnTrainersLocation && (
+                          <input
+                            type="number"
+                            name="training.lessonsOnTrainersLocationPrice"
+                            value={form.training?.lessonsOnTrainersLocationPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Competition Coaching */}
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <h5 className="text-md font-semibold text-brand mb-3">Competition Coaching</h5>
+                    <div className="space-y-3">
+                      {/* On Location Coaching */}
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={form.competitionCoaching?.onLocationCoaching || false}
+                          onChange={(e) => handleCheckboxChange('competitionCoaching.onLocationCoaching', e.target.checked)}
+                        >
+                          <span className="text-sm text-brand">On Location Coaching</span>
+                        </Checkbox>
+                        {form.competitionCoaching?.onLocationCoaching && (
+                          <input
+                            type="number"
+                            name="competitionCoaching.onLocationCoachingPrice"
+                            value={form.competitionCoaching?.onLocationCoachingPrice || ""}
+                            onChange={handleInputChange}
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Diplomas Section */}
+              <div className="border-t pt-4">
+                <h4 className="text-lg font-semibold text-brand mb-3">Diplomas Trainer</h4>
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <Input
+                      value={diplomaInput}
+                      onChange={(e) => setDiplomaInput(e.target.value)}
+                      placeholder="Enter diploma name"
+                      onPressEnter={handleAddDiploma}
+                      className="flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddDiploma}
+                      className="px-4 py-2 bg-[color:var(--primary)] text-white rounded hover:bg-[color:var(--primary)]/90 transition"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  {form.diplomas && form.diplomas.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {form.diplomas.map((diploma, index) => (
+                        <Tag
+                          key={index}
+                          closable
+                          onClose={() => handleRemoveDiploma(diploma)}
+                          className="bg-blue-100 text-blue-800 border-blue-200"
+                        >
+                          {diploma}
+                        </Tag>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <button
                 type="submit"
                 disabled={submitting}

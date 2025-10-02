@@ -167,14 +167,36 @@ export async function POST(req) {
       }, { status: 400 });
     }
 
-    // If schedule is coming as JSON string, parse it
-    const normalizedSchedule = typeof schedule === "string" ? JSON.parse(schedule) : schedule;
+    // Handle schedule as array
+    let normalizedSchedule = [];
+    if (Array.isArray(schedule)) {
+      normalizedSchedule = schedule;
+    } else if (typeof schedule === "string") {
+      try {
+        const parsed = JSON.parse(schedule);
+        normalizedSchedule = Array.isArray(parsed) ? parsed : [parsed];
+      } catch (e) {
+        return NextResponse.json({ 
+          message: "Invalid schedule format" 
+        }, { status: 400 });
+      }
+    } else if (schedule && typeof schedule === "object") {
+      normalizedSchedule = [schedule];
+    }
 
     // Validate schedule structure
-    if (!normalizedSchedule?.day || !normalizedSchedule?.startTime || !normalizedSchedule?.endTime) {
+    if (normalizedSchedule.length === 0) {
       return NextResponse.json({ 
-        message: "schedule must have day, startTime, and endTime properties" 
+        message: "At least one schedule slot is required" 
       }, { status: 400 });
+    }
+
+    for (const slot of normalizedSchedule) {
+      if (!slot?.day || !slot?.startTime || !slot?.endTime) {
+        return NextResponse.json({ 
+          message: "Each schedule slot must have day, startTime, and endTime properties" 
+        }, { status: 400 });
+      }
     }
 
     const trainer = await Trainer.create({
@@ -182,11 +204,11 @@ export async function POST(req) {
       title: String(title).trim(),
       details: String(details).trim(),
       price: Number(price),
-      schedule: {
-        day: String(normalizedSchedule.day).trim(),
-        startTime: String(normalizedSchedule.startTime).trim(),
-        endTime: String(normalizedSchedule.endTime).trim(),
-      },
+      schedule: normalizedSchedule.map(slot => ({
+        day: String(slot.day).trim(),
+        startTime: String(slot.startTime).trim(),
+        endTime: String(slot.endTime).trim(),
+      })),
       Experience: String(experience).trim(),
       location: String(location).trim(),
       coordinates: {

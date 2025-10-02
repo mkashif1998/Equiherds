@@ -1,26 +1,26 @@
 /**
  * @swagger
  * tags:
- *   - name: BookingStables
- *     description: Stable booking management
+ *   - name: BookingTrainers
+ *     description: Trainer booking management
  *
- * /api/bookingStables:
+ * /api/bookingTrainers:
  *   get:
- *     summary: Get all bookings with optional filters
- *     tags: [BookingStables]
+ *     summary: Get all trainer bookings with optional filters
+ *     tags: [BookingTrainers]
  *     parameters:
  *       - in: query
- *         name: userId
+ *         name: userId 
  *         schema:
  *           type: string
  *         required: false
- *         description: Filter bookings by user ID
+ *         description: Filter bookings by trainer user ID
  *       - in: query
- *         name: stableId
+ *         name: trainerId
  *         schema:
  *           type: string
  *         required: false
- *         description: Filter bookings by stable ID
+ *         description: Filter bookings by trainer ID
  *       - in: query
  *         name: clientId
  *         schema:
@@ -31,7 +31,6 @@
  *         name: bookingType
  *         schema:
  *           type: string
- *           enum: [day, week]
  *         required: false
  *         description: Filter bookings by type
  *       - in: query
@@ -64,7 +63,7 @@
  *         description: Number of items per page
  *     responses:
  *       200:
- *         description: List of bookings with pagination
+ *         description: List of trainer bookings with pagination
  *         content:
  *           application/json:
  *             schema:
@@ -75,7 +74,7 @@
  *                 data:
  *                   type: array
  *                   items:
- *                     $ref: '#/components/schemas/BookingStable'
+ *                     $ref: '#/components/schemas/BookingTrainer'
  *                 pagination:
  *                   type: object
  *                   properties:
@@ -92,7 +91,7 @@
  *                   properties:
  *                     userId:
  *                       type: string
- *                     stableId:
+ *                     trainerId:
  *                       type: string
  *                     clientId:
  *                       type: string
@@ -103,17 +102,17 @@
  *                     endDate:
  *                       type: string
  *   post:
- *     summary: Create a new booking
- *     tags: [BookingStables]
+ *     summary: Create a new trainer booking
+ *     tags: [BookingTrainers]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/BookingStableInput'
+ *             $ref: '#/components/schemas/BookingTrainerInput'
  *     responses:
  *       201:
- *         description: Booking created successfully
+ *         description: Trainer booking created successfully
  *         content:
  *           application/json:
  *             schema:
@@ -124,17 +123,17 @@
  *                 message:
  *                   type: string
  *                 data:
- *                   $ref: '#/components/schemas/BookingStable'
+ *                   $ref: '#/components/schemas/BookingTrainer'
  *       400:
  *         description: Validation error
  *       404:
- *         description: User or stable not found
+ *         description: User or trainer not found
  */
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
-import BookingStables from "@/models/BookingStables";
+import BookingTrainer from "@/models/BookingTrainer";
 import User from "@/models/User";
-import Stable from "@/models/Stables";
+import Trainer from "@/models/Trainer";
 
 async function parseRequestBody(req) {
   const contentType = req.headers.get("content-type") || "";
@@ -166,7 +165,7 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get("userId");
-    const stableId = searchParams.get("stableId");
+    const trainerId = searchParams.get("trainerId");
     const clientId = searchParams.get("clientId");
     const bookingType = searchParams.get("bookingType");
     const startDate = searchParams.get("startDate");
@@ -182,9 +181,9 @@ export async function GET(req) {
       query.userId = userId;
     }
     
-    // Filter by stableId if provided
-    if (stableId) {
-      query.stableId = stableId;
+    // Filter by trainerId if provided
+    if (trainerId) {
+      query.trainerId = trainerId;
     }
     
     // Filter by clientId if provided
@@ -262,15 +261,15 @@ export async function GET(req) {
 
 
 
-    const bookings = await BookingStables.find(query)
+    const bookings = await BookingTrainer.find(query)
       .populate("userId", "firstName lastName email phoneNumber")
       .populate("clientId", "firstName lastName email phoneNumber _id")
-      .populate("stableId", "Tittle Deatils location coordinates PriceRate")
+      .populate("trainerId", "title details price schedule Experience images location coordinates Rating noofRatingCustomers")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    const total = await BookingStables.countDocuments(query);
+    const total = await BookingTrainer.countDocuments(query);
 
 
     return NextResponse.json({
@@ -284,7 +283,7 @@ export async function GET(req) {
       },
       filters: {
         userId,
-        stableId,
+        trainerId,
         clientId,
         bookingType,
         startDate,
@@ -308,34 +307,19 @@ export async function POST(req) {
 
     const {
       userId,
-      stableId,
       trainerId,
       bookingType,
       startDate,
       endDate,
-      numberOfHorses,
       price,
       totalPrice,
       clientId
     } = body;
 
-    // Validate required fields - either stableId or trainerId must be provided
-    // numberOfHorses is required for stable bookings but optional for trainer bookings
-    const isTrainerBooking = trainerId && !stableId;
-    const requiredFields = !userId || (!stableId && !trainerId) || !bookingType || !startDate || !price || !totalPrice || !clientId;
-    const stableBookingMissingHorses = !isTrainerBooking && !numberOfHorses;
-    
-    if (requiredFields || stableBookingMissingHorses) {
+    // Validate required fields
+    if (!userId || !trainerId || !bookingType || !startDate || !price || !totalPrice || !clientId) {
       return NextResponse.json(
         { success: false, message: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    // Validate bookingType
-    if (!["day", "week", "month"].includes(bookingType)) {
-      return NextResponse.json(
-        { success: false, message: "Invalid booking type. Must be 'day', 'week', or 'month'" },
         { status: 400 }
       );
     }
@@ -365,13 +349,6 @@ export async function POST(req) {
       );
     }
 
-    // Validate numberOfHorses (only for stable bookings)
-    if (!isTrainerBooking && numberOfHorses < 1) {
-      return NextResponse.json(
-        { success: false, message: "Number of horses must be at least 1" },
-        { status: 400 }
-      );
-    }
 
     // Validate prices
     if (price < 0 || totalPrice < 0) {
@@ -390,28 +367,22 @@ export async function POST(req) {
       );
     }
 
-    // Check if stable or trainer exists
-    if (stableId) {
-      const stable = await Stable.findById(stableId);
-      if (!stable) {
-        return NextResponse.json(
-          { success: false, message: "Stable not found" },
-          { status: 404 }
-        );
-      }
-    } else if (trainerId) {
-      // For trainer bookings, we'll skip the stable validation
-      // The trainerId will be stored in the stableId field for now
+    // Check if trainer exists
+    const trainer = await Trainer.findById(trainerId);
+    if (!trainer) {
+      return NextResponse.json(
+        { success: false, message: "Trainer not found" },
+        { status: 404 }
+      );
     }
 
     // Create new booking
-    const newBooking = new BookingStables({
+    const newBooking = new BookingTrainer({
       userId,
-      stableId: stableId || trainerId, // Use trainerId as stableId for trainer bookings
+      trainerId,
       bookingType,
       startDate: start,
       endDate: end,
-      numberOfHorses: isTrainerBooking ? 1 : numberOfHorses, // Default to 1 for trainer bookings
       price,
       totalPrice,
       clientId
@@ -420,10 +391,10 @@ export async function POST(req) {
     const savedBooking = await newBooking.save();
 
     // Populate the saved booking
-    const populatedBooking = await BookingStables.findById(savedBooking._id)
+    const populatedBooking = await BookingTrainer.findById(savedBooking._id)
       .populate("userId", "firstName lastName email phoneNumber")
       .populate("clientId", "firstName lastName email phoneNumber _id")
-      .populate("stableId", "Tittle Deatils location coordinates PriceRate");
+      .populate("trainerId", "title details price schedule Experience images location coordinates Rating noofRatingCustomers");
 
     return NextResponse.json(
       {

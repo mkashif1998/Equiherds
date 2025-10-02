@@ -80,7 +80,7 @@ export async function POST(req) {
   await connectDB();
   try {
     const body = await parseBody(req);
-    const { userId, Tittle, Deatils, location, coordinates, image, Rating, PriceRate, Slotes, status } = body || {};
+    const { userId, Tittle, Deatils, location, coordinates, image, Rating, noofRatingCustomers, PriceRate, Slotes, status } = body || {};
 
     if (!userId || !Tittle || !Deatils) {
       return NextResponse.json({ message: "userId, Tittle, Deatils are required" }, { status: 400 });

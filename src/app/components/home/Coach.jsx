@@ -1,30 +1,69 @@
 "use client";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getRequest } from "@/service";
 
 // Star Rating Component
 const StarRating = ({ rating, maxRating = 5 }) => {
+  const fullStars = Math.floor(rating);
+  const hasHalfStar = rating - fullStars >= 0.5;
+  const emptyStars = maxRating - fullStars - (hasHalfStar ? 1 : 0);
+
   return (
     <div className="flex items-center">
-      {[...Array(maxRating)].map((_, index) => (
+      {/* Full stars */}
+      {[...Array(fullStars)].map((_, index) => (
         <svg
-          key={index}
-          className={`w-4 h-4 ${
-            index < rating ? 'text-yellow-400' : 'text-gray-300'
-          }`}
+          key={`full-${index}`}
+          className="w-4 h-4 text-yellow-400"
           fill="currentColor"
           viewBox="0 0 20 20"
         >
           <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
         </svg>
       ))}
-      <span className="ml-2 text-sm text-gray-600">({rating})</span>
+      
+      {/* Half star */}
+      {hasHalfStar && (
+        <div className="relative w-4 h-4">
+          <svg
+            className="w-4 h-4 text-gray-300 absolute"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+          <svg
+            className="w-4 h-4 text-yellow-400 absolute overflow-hidden"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+            style={{ width: '50%' }}
+          >
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        </div>
+      )}
+      
+      {/* Empty stars */}
+      {[...Array(emptyStars)].map((_, index) => (
+        <svg
+          key={`empty-${index}`}
+          className="w-4 h-4 text-gray-300"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+        </svg>
+      ))}
+      
+      <span className="ml-2 text-sm text-gray-600">({rating.toFixed(1)})</span>
     </div>
   );
 };
 
 const Coach = () => {
+  const router = useRouter();
   const [trainers, setTrainers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -35,12 +74,12 @@ const Coach = () => {
         setLoading(true);
         const data = await getRequest("/api/trainer");
         const normalized = Array.isArray(data)
-          ? data.map((t) => ({
+          ? data.slice(0, 4).map((t) => ({
               id: t._id,
               name: t?.userId ? `${t.userId.firstName || ""} ${t.userId.lastName || ""}`.trim() : t.title || "Trainer",
               image: Array.isArray(t.images) && t.images.length > 0 ? t.images[0] : "/trainer/1.jpg",
               price: typeof t.price === "number" ? t.price : Number(t.price) || 0,
-              rating: typeof t.rating === "number" ? t.rating : 0,
+              rating: typeof t.Rating === "number" ? t.Rating : 0,
               experience: t.Experience ? `${t.Experience} years` : "",
               specialization: t.title || "",
             }))
@@ -108,7 +147,10 @@ const Coach = () => {
                 </div>
                 
                 {/* Contact Button */}
-                <button className="w-full bg-secondary text-white py-2 px-4 rounded-md hover:bg-gray-800 transition-colors duration-200 font-medium cursor-pointer">
+                <button 
+                  onClick={() => router.push(`/bookingTrainer?trainerId=${trainer.id}`)}
+                  className="w-full bg-secondary text-white py-2 px-4 rounded-md hover:bg-gray-800 transition-colors duration-200 font-medium cursor-pointer"
+                >
                   Book Session
                 </button>
               </div>
@@ -117,7 +159,10 @@ const Coach = () => {
         </div>
 
         <div className="text-center">
-          <button className="bg-secondary text-white px-8 py-3 rounded-md hover:bg-gray-900 transition-colors duration-200 font-medium text-lg cursor-pointer">
+          <button 
+            onClick={() => router.push('/services?type=trainer')}
+            className="bg-secondary text-white px-8 py-3 rounded-md hover:bg-gray-900 transition-colors duration-200 font-medium text-lg cursor-pointer"
+          >
             View All
           </button>
         </div>

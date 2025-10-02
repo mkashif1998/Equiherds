@@ -3,10 +3,13 @@
 import { useState, useEffect } from "react";
 import { getRequest } from "@/service";
 import { getUserData } from "../utils/localStorage";
-import { Eye } from "lucide-react";
+import { Eye, Home, User } from "lucide-react";
+import { Pagination } from "antd";
 
 export default function Client() {
-  const [bookings, setBookings] = useState([]);
+  const [activeTab, setActiveTab] = useState("stable"); // "stable" or "trainer"
+  const [stableBookings, setStableBookings] = useState([]);
+  const [trainerBookings, setTrainerBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pagination, setPagination] = useState({
@@ -20,7 +23,7 @@ export default function Client() {
 
   useEffect(() => {
     fetchBookings();
-  }, [pagination.page]);
+  }, [pagination.page, activeTab]);
 
   const fetchBookings = async () => {
     try {
@@ -30,22 +33,51 @@ export default function Client() {
       const userData = getUserData();
       if (!userData.id) {
         setError("User not authenticated");
+        setLoading(false);
         return;
       }
 
-      const response = await getRequest(
-        `/api/bookingStables?userId=${userData.id}&page=${pagination.page}&limit=${pagination.limit}`
-      );
-
-      if (response.success && response.data) {
-        setBookings(response.data);
-        setPagination(prev => ({
-          ...prev,
-          total: response.pagination.total,
-          pages: response.pagination.pages
-        }));
+      let response;
+      if (activeTab === "stable") {
+        response = await getRequest(
+          `/api/bookingStables?userId=${userData.id}&page=${pagination.page}&limit=${pagination.limit}`
+        );
+        if (response.success && response.data) {
+          setStableBookings(response.data);
+          setPagination(prev => ({
+            ...prev,
+            total: response.pagination.total,
+            pages: response.pagination.pages
+          }));
+        } else {
+          setStableBookings([]);
+          setPagination(prev => ({
+            ...prev,
+            total: 0,
+            pages: 0
+          }));
+          setError("Failed to fetch stable bookings");
+        }
       } else {
-        setError("Failed to fetch bookings");
+        response = await getRequest(
+          `/api/bookingTrainers?userId=${userData.id}&page=${pagination.page}&limit=${pagination.limit}`
+        );
+        if (response.success && response.data) {
+          setTrainerBookings(response.data);
+          setPagination(prev => ({
+            ...prev,
+            total: response.pagination.total,
+            pages: response.pagination.pages
+          }));
+        } else {
+          setTrainerBookings([]);
+          setPagination(prev => ({
+            ...prev,
+            total: 0,
+            pages: 0
+          }));
+          setError("Failed to fetch trainer bookings");
+        }
       }
     } catch (err) {
       console.error("Error fetching bookings:", err);
@@ -77,10 +109,16 @@ export default function Client() {
     });
   };
 
-  const getServiceType = (bookingType) => {
-    if (bookingType === 'day') return 'Daily Stable';
-    if (bookingType === 'week') return 'Weekly Stable';
-    return bookingType || 'Unknown';
+  const getServiceType = (bookingType, serviceType) => {
+    if (serviceType === 'trainer') {
+      if (bookingType === 'day') return 'Daily Training';
+      if (bookingType === 'week') return 'Weekly Training';
+      return bookingType || 'Training';
+    } else {
+      if (bookingType === 'day') return 'Daily Stable';
+      if (bookingType === 'week') return 'Weekly Stable';
+      return bookingType || 'Stable';
+    }
   };
 
   const handleViewDetails = (booking) => {
@@ -92,13 +130,59 @@ export default function Client() {
     setIsModalOpen(false);
     setSelectedBooking(null);
   };
+
+  // Get current bookings for the active tab
+  const currentBookings = activeTab === "stable" ? stableBookings : trainerBookings;
+
+  // Handle pagination change
+  const handlePageChange = (page, pageSize) => {
+    setPagination(prev => ({ 
+      ...prev, 
+      page: page,
+      limit: pageSize || prev.limit
+    }));
+  };
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-      <h2 className="text-2xl font-semibold text-brand">Clients</h2>
+        <h2 className="text-2xl font-semibold text-brand">Clients</h2>
         <div className="text-sm text-gray-600">
           Total: {pagination.total} bookings
         </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => {
+              setActiveTab("stable");
+              setPagination(prev => ({ ...prev, page: 1 }));
+            }}
+            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+              activeTab === "stable"
+                ? "border-brand text-brand"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            <Home size={16} />
+            Stable Clients
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("trainer");
+              setPagination(prev => ({ ...prev, page: 1 }));
+            }}
+            className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+              activeTab === "trainer"
+                ? "border-brand text-brand"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            <User size={16} />
+            Trainer Clients
+          </button>
+        </nav>
       </div>
 
       {loading && (
@@ -132,20 +216,25 @@ export default function Client() {
                     <th className="px-3 py-3 text-left font-medium min-w-[100px]">Start Date</th>
                     <th className="px-3 py-3 text-left font-medium min-w-[100px]">End Date</th>
                     <th className="px-3 py-3 text-left font-medium min-w-[120px]">Service</th>
-                    <th className="px-3 py-3 text-left font-medium min-w-[100px]">Stable</th>
+                    {activeTab === "stable" && (
+                      <th className="px-3 py-3 text-left font-medium min-w-[100px]">Stable</th>
+                    )}
+                    {activeTab === "trainer" && (
+                      <th className="px-3 py-3 text-left font-medium min-w-[100px]">Trainer</th>
+                    )}
                     <th className="px-3 py-3 text-left font-medium min-w-[90px]">Price</th>
                     <th className="px-3 py-3 text-center font-medium min-w-[80px]">Actions</th>
                   </tr>
                 </thead>
             <tbody>
-                  {bookings.length === 0 ? (
+                  {currentBookings.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={activeTab === "stable" ? "8" : "8"} className="px-4 py-8 text-center text-gray-500">
                         No bookings found
                       </td>
                     </tr>
                   ) : (
-                    bookings.map((booking) => {
+                    currentBookings.map((booking) => {
                       const status = getStatus(booking.startDate, booking.endDate);
                       const clientName = `${booking.clientId?.firstName || ''} ${booking.clientId?.lastName || ''}`.trim();
                       
@@ -172,15 +261,24 @@ export default function Client() {
                             </div>
                           </td>
                           <td className="px-3 py-3">
-                            <div className="max-w-[120px] truncate" title={getServiceType(booking.bookingType)}>
-                              {getServiceType(booking.bookingType)}
+                            <div className="max-w-[120px] truncate" title={getServiceType(booking.bookingType, activeTab)}>
+                              {getServiceType(booking.bookingType, activeTab)}
                             </div>
                           </td>
-                          <td className="px-3 py-3">
-                            <div className="max-w-[100px] truncate" title={booking.stableId?.Tittle || 'Unknown Stable'}>
-                              {booking.stableId?.Tittle || 'Unknown Stable'}
-                            </div>
-                          </td>
+                          {activeTab === "stable" && (
+                            <td className="px-3 py-3">
+                              <div className="max-w-[100px] truncate" title={booking.stableId?.Tittle || 'Unknown Stable'}>
+                                {booking.stableId?.Tittle || 'Unknown Stable'}
+                              </div>
+                            </td>
+                          )}
+                          {activeTab === "trainer" && (
+                            <td className="px-3 py-3">
+                              <div className="max-w-[100px] truncate" title={booking.trainerId?.title || 'Unknown Trainer'}>
+                                {booking.trainerId?.title || 'Unknown Trainer'}
+                              </div>
+                            </td>
+                          )}
                           <td className="px-3 py-3 font-medium text-right">
                             <div className="max-w-[90px] truncate" title={`$${booking.totalPrice}`}>
                               ${booking.totalPrice}
@@ -206,12 +304,12 @@ export default function Client() {
 
           {/* Mobile/Tablet Card View */}
           <div className="lg:hidden space-y-4">
-            {bookings.length === 0 ? (
+            {currentBookings.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 No bookings found
               </div>
             ) : (
-              bookings.map((booking) => {
+              currentBookings.map((booking) => {
                 const status = getStatus(booking.startDate, booking.endDate);
                 const clientName = `${booking.clientId?.firstName || ''} ${booking.clientId?.lastName || ''}`.trim();
                 
@@ -224,7 +322,10 @@ export default function Client() {
                           {clientName || 'Unknown Client'}
                         </h3>
                         <p className="text-sm text-gray-600">
-                          {booking.stableId?.Tittle || 'Unknown Stable'}
+                          {activeTab === "stable" 
+                            ? (booking.stableId?.Tittle || 'Unknown Stable')
+                            : (booking.trainerId?.title || 'Unknown Trainer')
+                          }
                         </p>
                       </div>
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
@@ -263,7 +364,7 @@ export default function Client() {
                       <div>
                         <p className="text-xs text-gray-500 uppercase tracking-wide">Service</p>
                         <p className="text-sm text-gray-900">
-                          {getServiceType(booking.bookingType)}
+                          {getServiceType(booking.bookingType, activeTab)}
                         </p>
                       </div>
                     </div>
@@ -303,25 +404,18 @@ export default function Client() {
               {pagination.total} bookings
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
-              disabled={pagination.page === 1}
-              className="px-3 py-2 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-            >
-              Previous
-            </button>
-            <span className="px-3 py-2 text-sm bg-gray-50 rounded">
-              Page {pagination.page} of {pagination.pages}
-                    </span>
-            <button
-              onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-              disabled={pagination.page === pagination.pages}
-              className="px-3 py-2 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-            >
-              Next
-            </button>
-          </div>
+          <Pagination
+            current={pagination.page}
+            total={pagination.total}
+            pageSize={pagination.limit}
+            showSizeChanger
+            showQuickJumper
+            showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} items`}
+            onChange={handlePageChange}
+            onShowSizeChange={handlePageChange}
+            pageSizeOptions={['5', '10', '20', '50']}
+            className="flex justify-center"
+          />
         </div>
       )}
 
@@ -401,11 +495,7 @@ export default function Client() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-600">Service Type</label>
-                      <p className="text-gray-900">{getServiceType(selectedBooking.bookingType)}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Number of Horses</label>
-                      <p className="text-gray-900">{selectedBooking.numberOfHorses}</p>
+                      <p className="text-gray-900">{getServiceType(selectedBooking.bookingType, activeTab)}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-600">Price per {selectedBooking.bookingType}</label>
@@ -447,32 +537,64 @@ export default function Client() {
                   </div>
                 </div>
 
-                {/* Stable Information */}
+                {/* Service Information */}
                 <div className="space-y-4">
                   <h4 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-                    Stable Information
+                    {activeTab === "stable" ? "Stable Information" : "Trainer Information"}
                   </h4>
                   <div className="space-y-3">
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Stable Name</label>
-                      <p className="text-gray-900">{selectedBooking.stableId?.Tittle || 'Unknown Stable'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Description</label>
-                      <p className="text-gray-900">{selectedBooking.stableId?.Deatils || 'No description available'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Location</label>
-                      <p className="text-gray-900">{selectedBooking.stableId?.location || 'Location not specified'}</p>
-                    </div>
-                    {selectedBooking.stableId?.coordinates && (
-                      <div>
-                        <label className="text-sm font-medium text-gray-600">Coordinates</label>
-                        <p className="text-gray-900 text-sm">
-                          Lat: {selectedBooking.stableId.coordinates.lat}, 
-                          Lng: {selectedBooking.stableId.coordinates.lng}
-                        </p>
-                      </div>
+                    {activeTab === "stable" ? (
+                      <>
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Stable Name</label>
+                          <p className="text-gray-900">{selectedBooking.stableId?.Tittle || 'Unknown Stable'}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Description</label>
+                          <p className="text-gray-900">{selectedBooking.stableId?.Deatils || 'No description available'}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Location</label>
+                          <p className="text-gray-900">{selectedBooking.stableId?.location || 'Location not specified'}</p>
+                        </div>
+                        {selectedBooking.stableId?.coordinates && (
+                          <div>
+                            <label className="text-sm font-medium text-gray-600">Coordinates</label>
+                            <p className="text-gray-900 text-sm">
+                              Lat: {selectedBooking.stableId.coordinates.lat}, 
+                              Lng: {selectedBooking.stableId.coordinates.lng}
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Trainer Name</label>
+                          <p className="text-gray-900">{selectedBooking.trainerId?.title || 'Unknown Trainer'}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Description</label>
+                          <p className="text-gray-900">{selectedBooking.trainerId?.details || 'No description available'}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Experience</label>
+                          <p className="text-gray-900">{selectedBooking.trainerId?.Experience || 'Not specified'}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Location</label>
+                          <p className="text-gray-900">{selectedBooking.trainerId?.location || 'Location not specified'}</p>
+                        </div>
+                        {selectedBooking.trainerId?.coordinates && (
+                          <div>
+                            <label className="text-sm font-medium text-gray-600">Coordinates</label>
+                            <p className="text-gray-900 text-sm">
+                              Lat: {selectedBooking.trainerId.coordinates.lat}, 
+                              Lng: {selectedBooking.trainerId.coordinates.lng}
+                            </p>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

@@ -106,6 +106,7 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Trainer from "@/models/Trainer";
+import "@/models/User";
 
 async function parseBody(req) {
   const contentType = req.headers.get("content-type") || "";
@@ -167,11 +168,29 @@ export async function PUT(req, { params }) {
     // Validate schedule structure if provided
     let normalizedSchedule = null;
     if (schedule !== undefined) {
-      normalizedSchedule = typeof schedule === "string" ? JSON.parse(schedule) : schedule;
-      if (!normalizedSchedule?.day || !normalizedSchedule?.startTime || !normalizedSchedule?.endTime) {
-        return NextResponse.json({ 
-          message: "schedule must have day, startTime, and endTime properties" 
-        }, { status: 400 });
+      if (Array.isArray(schedule)) {
+        normalizedSchedule = schedule;
+      } else if (typeof schedule === "string") {
+        try {
+          const parsed = JSON.parse(schedule);
+          normalizedSchedule = Array.isArray(parsed) ? parsed : [parsed];
+        } catch (e) {
+          return NextResponse.json({ 
+            message: "Invalid schedule format" 
+          }, { status: 400 });
+        }
+      } else if (schedule && typeof schedule === "object") {
+        normalizedSchedule = [schedule];
+      }
+
+      if (normalizedSchedule && normalizedSchedule.length > 0) {
+        for (const slot of normalizedSchedule) {
+          if (!slot?.day || !slot?.startTime || !slot?.endTime) {
+            return NextResponse.json({ 
+              message: "Each schedule slot must have day, startTime, and endTime properties" 
+            }, { status: 400 });
+          }
+        }
       }
     }
 
@@ -190,11 +209,11 @@ export async function PUT(req, { params }) {
     }
     if (price !== undefined) update.price = Number(price);
     if (normalizedSchedule !== undefined) {
-      update.schedule = {
-        day: String(normalizedSchedule.day).trim(),
-        startTime: String(normalizedSchedule.startTime).trim(),
-        endTime: String(normalizedSchedule.endTime).trim(),
-      };
+      update.schedule = normalizedSchedule.map(slot => ({
+        day: String(slot.day).trim(),
+        startTime: String(slot.startTime).trim(),
+        endTime: String(slot.endTime).trim(),
+      }));
     }
     if (images !== undefined) {
       update.images = Array.isArray(images) 

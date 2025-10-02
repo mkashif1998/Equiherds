@@ -22,11 +22,8 @@ function BookingTrainerContent() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [selectedTrainer, setSelectedTrainer] = useState(null);
-  const [bookingType, setBookingType] = useState(null); // 'day' or 'week'
+  const [bookingType, setBookingType] = useState(null); // 'week' or 'month'
   const [selectedDateRange, setSelectedDateRange] = useState(null);
-  const [bookingAvailability, setBookingAvailability] = useState([]);
-  const [availabilityLoading, setAvailabilityLoading] = useState(false);
-  const [availabilityError, setAvailabilityError] = useState(null);
   const searchParams = useSearchParams();
   const { notification } = App.useApp();
 
@@ -41,57 +38,8 @@ function BookingTrainerContent() {
             const response = await getRequest(`/api/trainer/${trainerId}`);
             
             if (response && response._id) {
-              // Normalize the API response data
-              const normalizedData = {
-                trainerId: response._id,
-                title: response.title || response.Tittle || "Untitled Trainer",
-                details: response.details || response.Deatils || "",
-                rating: response.Rating || response.rating || 0,
-                images: Array.isArray(response.images) && response.images.length > 0 
-                  ? response.images 
-                  : Array.isArray(response.image) && response.image.length > 0 
-                  ? response.image 
-                  : ["/product/2.jpg"],
-                experience: response.Experience || response.experience || "",
-                userId: response.userId || null,
-                ownerName: response.userId ? `${response.userId.firstName || ''} ${response.userId.lastName || ''}`.trim() : '',
-                ownerEmail: response.userId?.email || '',
-                slots: Array.isArray(response.Slotes)
-                  ? response.Slotes.map((sl) => ({ 
-                      date: sl?.date || '', 
-                      startTime: sl?.startTime || '', 
-                      endTime: sl?.endTime || '' 
-                    }))
-                  : [],
-                status: response.status || "active",
-                // Handle PriceRate - can be array or object
-                priceRates: [],
-                price: 0
-              };
-
-              // Handle PriceRate - can be array or object
-              if (Array.isArray(response.PriceRate) && response.PriceRate.length > 0) {
-                normalizedData.priceRates = response.PriceRate
-                  .filter((pr) => typeof pr?.PriceRate === "number" && pr.PriceRate > 0 && pr.RateType)
-                  .map((pr) => ({
-                    price: pr.PriceRate,
-                    rateType: pr.RateType,
-                  }));
-              } else if (typeof response.PriceRate === "object" && response.PriceRate !== null) {
-                if (typeof response.PriceRate.PriceRate === "number" && response.PriceRate.PriceRate > 0 && response.PriceRate.RateType) {
-                  normalizedData.priceRates = [{
-                    price: response.PriceRate.PriceRate,
-                    rateType: response.PriceRate.RateType,
-                  }];
-                }
-              }
-              
-              // Set price as first entry if available
-              normalizedData.price = normalizedData.priceRates.length > 0 ? normalizedData.priceRates[0].price : 0;
-
-              setSelectedTrainer(normalizedData);
-              // Fetch booking availability for this trainer
-              fetchBookingAvailability(trainerId);
+              // Use the API response data directly
+              setSelectedTrainer(response);
             } else {
               notification.error({
                 message: 'Trainer Not Found',
@@ -125,72 +73,63 @@ function BookingTrainerContent() {
   // Handle date range selection
   const handleDateRangeChange = (dates) => {
     setSelectedDateRange(dates);
-    // Fetch availability for the selected date range (with 15 days buffer)
-    if (dates && dates.length === 2 && selectedTrainer?.trainerId) {
-      fetchBookingAvailability(selectedTrainer.trainerId, dates);
-    }
-  };
-
-  // Fetch booking availability for the selected trainer
-  const fetchBookingAvailability = async (trainerId, userDateRange = null) => {
-    if (!trainerId) return;
-    
-    setAvailabilityLoading(true);
-    setAvailabilityError(null);
-    
-    try {
-      let startDate, endDate;
-      
-      if (userDateRange && userDateRange.length === 2) {
-        // Use user's selected date range and extend it by 15 days before and after
-        const userStart = dayjs(userDateRange[0]);
-        const userEnd = dayjs(userDateRange[1]);
-        
-        startDate = userStart.subtract(15, 'days').format('YYYY-MM-DD');
-        endDate = userEnd.add(15, 'days').format('YYYY-MM-DD');
-      } else {
-        // Fallback: Get bookings for the next 3 months to show availability
-        startDate = dayjs().format('YYYY-MM-DD');
-        endDate = dayjs().add(3, 'months').format('YYYY-MM-DD');
-      }
-      
-      const response = await getRequest(
-        `/api/bookingTrainer?trainerId=${trainerId}&startDate=${startDate}&endDate=${endDate}`
-      );
-      
-      if (response.success && response.data) {
-        setBookingAvailability(response.data);
-      } else {
-        setAvailabilityError('Failed to fetch booking availability');
-      }
-    } catch (error) {
-      console.error('Error fetching booking availability:', error);
-      setAvailabilityError('Error loading booking availability');
-    } finally {
-      setAvailabilityLoading(false);
-    }
   };
 
 
-  // Get booking price based on booking type
-  const getBookingPrice = () => {
-    if (!selectedTrainer || !bookingType) return 0;
-    
-    // Use trainer's price rates if available
-    if (selectedTrainer.priceRates && selectedTrainer.priceRates.length > 0) {
-      // Find the rate type that matches the booking type
-      const matchingRate = selectedTrainer.priceRates.find(pr => pr.rateType === bookingType);
-      
-      if (matchingRate) {
-        return matchingRate.price;
-      }
-      
-      // Fallback to first available rate
-      return selectedTrainer.priceRates[0].price;
+
+  // Calculate hours per week from schedule
+  const getHoursPerWeek = () => {
+    if (!selectedTrainer || !selectedTrainer.schedule || !Array.isArray(selectedTrainer.schedule)) {
+      return 0;
     }
     
-    // Fallback to trainer's base price
-    return selectedTrainer.price || 0;
+    let totalHours = 0;
+    selectedTrainer.schedule.forEach(slot => {
+      const startTime = dayjs(slot.startTime, 'HH:mm');
+      const endTime = dayjs(slot.endTime, 'HH:mm');
+      const hours = endTime.diff(startTime, 'hour', true);
+      totalHours += hours;
+    });
+    
+    return totalHours;
+  };
+
+  // Calculate total price based on booking type and duration
+  const calculateTotalPrice = () => {
+    if (!selectedTrainer || !bookingType || !selectedDateRange) return 0;
+    
+    const hourlyRate = selectedTrainer.price || 0;
+    const hoursPerWeek = getHoursPerWeek();
+    const startDate = dayjs(selectedDateRange[0]);
+    const endDate = dayjs(selectedDateRange[1]);
+    
+    if (bookingType === 'week') {
+      // Calculate number of weeks and multiply by actual hours per week
+      const weeks = Math.ceil(endDate.diff(startDate, 'day') / 7);
+      return hourlyRate * hoursPerWeek * weeks;
+    } else if (bookingType === 'month') {
+      // Calculate number of months and multiply by hours per month (hours per week * 4)
+      const months = Math.ceil(endDate.diff(startDate, 'month', true));
+      const hoursPerMonth = hoursPerWeek * 4; // Assuming 4 weeks per month
+      return hourlyRate * hoursPerMonth * months;
+    }
+    
+    return hourlyRate;
+  };
+
+  // Get price per unit (week or month)
+  const getPricePerUnit = () => {
+    if (!selectedTrainer) return 0;
+    const hourlyRate = selectedTrainer.price || 0;
+    const hoursPerWeek = getHoursPerWeek();
+    
+    if (bookingType === 'week') {
+      return hourlyRate * hoursPerWeek; // Actual hours per week from schedule
+    } else if (bookingType === 'month') {
+      return hourlyRate * hoursPerWeek * 4; // Hours per month (hours per week * 4)
+    }
+    
+    return hourlyRate;
   };
 
   // Handle form submission
@@ -219,19 +158,20 @@ function BookingTrainerContent() {
     setLoading(true);
     try {
       const bookingData = {
-        clientId: userData.id,
         userId: selectedTrainer?.userId?._id || selectedTrainer?.userId,
-        trainerId: selectedTrainer?.trainerId,
+        clientId: userData.id,
+        trainerId: selectedTrainer?._id,
+        bookingDate: dayjs().format('YYYY-MM-DD'),
         bookingType: bookingType,
         startDate: selectedDateRange[0].format('YYYY-MM-DD'),
         endDate: selectedDateRange[1].format('YYYY-MM-DD'),
-        price: getBookingPrice(),
-        totalPrice: getBookingPrice()
+        price: getPricePerUnit(),
+        totalPrice: calculateTotalPrice()
       };
       
       console.log('Sending booking data:', bookingData);
       
-      const result = await postRequest('/api/bookingTrainer', bookingData);
+      const result = await postRequest('/api/bookingTrainers', bookingData);
 
       if (result.success) {
         notification.success({
@@ -242,10 +182,7 @@ function BookingTrainerContent() {
         form.resetFields();
         setBookingType(null);
         setSelectedDateRange(null);
-        // Refresh availability data to show the new booking
-        if (selectedTrainer?.trainerId) {
-          fetchBookingAvailability(selectedTrainer.trainerId, selectedDateRange);
-        }
+        setSessionType(null);
       } else {
         notification.error({
           message: 'Booking Failed',
@@ -289,41 +226,27 @@ function BookingTrainerContent() {
                 {selectedTrainer.details && (
                   <p className="text-gray-600">{selectedTrainer.details}</p>
                 )}
-                {selectedTrainer.experience && (
+                {selectedTrainer.Experience && (
                   <p className="text-sm text-gray-500">
-                    <strong>Experience:</strong> {selectedTrainer.experience}
+                    <strong>Experience:</strong> {selectedTrainer.Experience} years
                   </p>
                 )}
                 <div className="flex flex-wrap gap-2">
-                  {selectedTrainer.priceRates && selectedTrainer.priceRates.length > 0 ? (
-                    selectedTrainer.priceRates.map((pr, idx) => (
-                      <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-brand/10 text-brand border border-brand/20">
-                        ${pr.price}{pr.rateType ? `/${pr.rateType}` : ''}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-brand/10 text-brand border border-brand/20">
-                      ${selectedTrainer.price}
-                    </span>
-                  )}
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-brand/10 text-brand border border-brand/20">
+                    ${selectedTrainer.price}/hour
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-brand/10 text-brand border border-brand/20">
+                    ${selectedTrainer.price * getHoursPerWeek()}/week ({getHoursPerWeek()} hours)
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-brand/10 text-brand border border-brand/20">
+                    ${selectedTrainer.price * getHoursPerWeek() * 4}/month ({getHoursPerWeek() * 4} hours)
+                  </span>
                 </div>
-                {selectedTrainer.ownerName && (
+                {selectedTrainer.userId && (
                   <p className="text-sm text-gray-500">
-                    Trainer: {selectedTrainer.ownerName}
-                    {selectedTrainer.ownerEmail && ` (${selectedTrainer.ownerEmail})`}
+                    Trainer: {selectedTrainer.userId.firstName} {selectedTrainer.userId.lastName}
+                    {selectedTrainer.userId.email && ` (${selectedTrainer.userId.email})`}
                   </p>
-                )}
-                {selectedTrainer.slots && selectedTrainer.slots.length > 0 && (
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">Available Slots:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedTrainer.slots.map((slot, idx) => (
-                        <span key={idx} className="inline-flex items-center px-2 py-1 rounded text-xs bg-gray-100 text-gray-700">
-                          {slot.date} {slot.startTime}-{slot.endTime}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
                 )}
               </div>
             </Col>
@@ -352,8 +275,8 @@ function BookingTrainerContent() {
                     onChange={handleBookingTypeChange}
                     value={bookingType}
                   >
-                    <Option value="day">Day</Option>
                     <Option value="week">Week</Option>
+                    <Option value="month">Month</Option>
                   </Select>
                 </Form.Item>
 
@@ -373,21 +296,6 @@ function BookingTrainerContent() {
                   </Form.Item>
                 )}
 
-                <Form.Item
-                  label="Training Session Type"
-                  name="sessionType"
-                  rules={[{ required: true, message: 'Please select training session type' }]}
-                >
-                  <Select
-                    size="large"
-                    placeholder="Select training session type"
-                  >
-                    <Option value="basic">Basic Training</Option>
-                    <Option value="advanced">Advanced Training</Option>
-                    <Option value="jumping">Jumping Training</Option>
-                    <Option value="dressage">Dressage Training</Option>
-                  </Select>
-                </Form.Item>
 
                 {/* Price Display */}
                 {bookingType && selectedDateRange && (
@@ -405,13 +313,22 @@ function BookingTrainerContent() {
                         </span>
                       </div>
                       <div className="flex justify-between">
+                        <span className="text-gray-600">Duration:</span>
+                        <span className="font-medium">
+                          {bookingType === 'week'
+                            ? `${Math.ceil(dayjs(selectedDateRange[1]).diff(dayjs(selectedDateRange[0]), 'day') / 7)} weeks`
+                            : `${Math.ceil(dayjs(selectedDateRange[1]).diff(dayjs(selectedDateRange[0]), 'month', true))} months`
+                          }
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
                         <span className="text-gray-600">Price per {bookingType}:</span>
-                        <span className="font-bold text-brand">${getBookingPrice()}</span>
+                        <span className="font-bold text-brand">${getPricePerUnit()}</span>
                       </div>
                       <div className="pt-2 border-t border-gray-200">
                         <div className="flex justify-between items-center">
                           <span className="font-semibold text-gray-800">Total Price:</span>
-                          <span className="text-xl font-bold text-brand">${getBookingPrice()}</span>
+                          <span className="text-xl font-bold text-brand">${calculateTotalPrice()}</span>
                         </div>
                       </div>
                     </div>
@@ -427,72 +344,40 @@ function BookingTrainerContent() {
                     className="w-full"
                     disabled={!bookingType || !selectedDateRange}
                   >
-                    Book Training Session (${getBookingPrice()})
+                    Book Training Session (${calculateTotalPrice()})
                   </Button>
                 </Form.Item>
               </Form>
             </Card>
           </Col>
 
-          {/* Booking Availability Panel */}
+          {/* Trainer Schedule Panel */}
           <Col xs={24} lg={12}>
-            <Card 
-              title={
-                selectedDateRange && selectedDateRange.length === 2 
-                  ? `Booking Availability (${dayjs(selectedDateRange[0]).subtract(15, 'days').format('MMM DD')} - ${dayjs(selectedDateRange[1]).add(15, 'days').format('MMM DD, YYYY')})`
-                  : "Booking Availability"
-              }
-              className="h-fit"
-            extra={
-              selectedTrainer && (
-                <Button 
-                  size="small" 
-                  onClick={() => fetchBookingAvailability(selectedTrainer.trainerId, selectedDateRange)}
-                  loading={availabilityLoading}
-                >
-                  Refresh
-                </Button>
-              )
-            }
-            >
-              {availabilityLoading ? (
-                <div className="flex justify-center items-center py-8">
-                  <Spin size="large" />
-                </div>
-              ) : availabilityError ? (
-                <Alert
-                  message="Error Loading Availability"
-                  description={availabilityError}
-                  type="error"
-                  showIcon
-                />
-              ) : bookingAvailability.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">No bookings found for the next 3 months</p>
-                  <p className="text-sm text-gray-400 mt-2">This trainer appears to be available!</p>
-                </div>
-              ) : (
+            <Card title="Trainer Schedule" className="h-fit">
+              {selectedTrainer && selectedTrainer.schedule && Array.isArray(selectedTrainer.schedule) && selectedTrainer.schedule.length > 0 ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-gray-800">Booked Dates</h4>
-                    <span className="text-sm text-gray-500">
-                      {bookingAvailability.length} booking{bookingAvailability.length !== 1 ? 's' : ''}
-                    </span>
+                    <h4 className="font-semibold text-gray-800">Available Days & Times</h4>
+                    <span className="text-sm text-gray-500">{getHoursPerWeek()} hours/week</span>
                   </div>
                   
                   <div className="flex flex-wrap gap-2">
-                    {bookingAvailability.map((booking) => (
-                      <Tag key={booking._id} color="red" className="text-xs">
-                        {dayjs(booking.startDate).format('MMM DD, YYYY')} to {dayjs(booking.endDate).format('MMM DD, YYYY')}
+                    {selectedTrainer.schedule.map((slot, index) => (
+                      <Tag key={index} color="green" className="text-sm">
+                        {slot.day} {slot.startTime} - {slot.endTime}
                       </Tag>
                     ))}
                   </div>
                   
-                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-yellow-800">
-                      <strong>Note:</strong> These dates are already booked and not available for new bookings.
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>Note:</strong> This trainer is available for {getHoursPerWeek()} hours per week across {selectedTrainer.schedule.length} day{selectedTrainer.schedule.length > 1 ? 's' : ''}.
                     </p>
                   </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No schedule information available</p>
                 </div>
               )}
             </Card>

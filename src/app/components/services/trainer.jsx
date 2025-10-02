@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { getRequest } from "@/service";
 
 export default function TrainerList() {
+  const router = useRouter();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -132,6 +134,10 @@ export default function TrainerList() {
     setSelectedTrainer(trainer);
     setCurrentImageIndex(0);
     setIsModalOpen(true);
+  }
+
+  function handleViewDetails(trainerId) {
+    router.push(`/bookingTrainer?trainerId=${trainerId}`);
   }
 
   function closeModal() {
@@ -435,6 +441,10 @@ export default function TrainerList() {
                     <div className="flex flex-col gap-3">
                       <button 
                         className="w-full px-6 py-3 bg-brand text-white rounded-lg hover:bg-brand/90 transition-colors duration-200 font-medium"
+                        onClick={() => {
+                          closeModal();
+                          handleViewDetails(selectedTrainer.id);
+                        }}
                       >
                         Book Training Session
                       </button>
