@@ -62,6 +62,12 @@
  *           default: 10
  *         required: false
  *         description: Number of items per page
+ *       - in: query
+ *         name: ratingUserId
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Filter bookings by rating user ID
  *     responses:
  *       200:
  *         description: List of bookings with pagination
@@ -102,6 +108,8 @@
  *                       type: string
  *                     endDate:
  *                       type: string
+ *                     ratingUserId:
+ *                       type: string
  *   post:
  *     summary: Create a new booking
  *     tags: [BookingStables]
@@ -135,6 +143,7 @@ import connectDB from "@/lib/db";
 import BookingStables from "@/models/BookingStables";
 import User from "@/models/User";
 import Stable from "@/models/Stables";
+import mongoose from "mongoose";
 
 async function parseRequestBody(req) {
   const contentType = req.headers.get("content-type") || "";
@@ -171,6 +180,7 @@ export async function GET(req) {
     const bookingType = searchParams.get("bookingType");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    const ratingUserId = searchParams.get("ratingUserId");
     const page = parseInt(searchParams.get("page")) || 1;
     const limit = parseInt(searchParams.get("limit")) || 10;
     const skip = (page - 1) * limit;
@@ -195,6 +205,11 @@ export async function GET(req) {
     // Filter by bookingType if provided
     if (bookingType) {
       query.bookingType = bookingType;
+    }
+
+    // Filter by ratingUserId if provided
+    if (ratingUserId) {
+      query.ratinguserid = ratingUserId;
     }
 
     // Filter by date range if provided
@@ -260,18 +275,16 @@ export async function GET(req) {
       }
     }
 
-
-
     const bookings = await BookingStables.find(query)
       .populate("userId", "firstName lastName email phoneNumber")
       .populate("clientId", "firstName lastName email phoneNumber _id")
       .populate("stableId", "Tittle Deatils location coordinates PriceRate")
+      .populate("ratinguserid", "firstName lastName email phoneNumber _id")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
     const total = await BookingStables.countDocuments(query);
-
 
     return NextResponse.json({
       success: true,
@@ -288,7 +301,8 @@ export async function GET(req) {
         clientId,
         bookingType,
         startDate,
-        endDate
+        endDate,
+        ratingUserId
       }
     });
   } catch (error) {
@@ -314,15 +328,28 @@ export async function POST(req) {
       startDate,
       endDate,
       numberOfHorses,
-      price,
+      basePrice,
+      additionalServices,
+      servicePriceDetails,
+      additionalServiceCosts,
       totalPrice,
-      clientId
+      numberOfDays,
+      clientId,
+      ratingUserId,
+      // Legacy fields for backward compatibility
+      price
     } = body;
 
     // Validate required fields - either stableId or trainerId must be provided
     // numberOfHorses is required for stable bookings but optional for trainer bookings
     const isTrainerBooking = trainerId && !stableId;
-    const requiredFields = !userId || (!stableId && !trainerId) || !bookingType || !startDate || !price || !totalPrice || !clientId;
+    
+    // Use new fields if available, fallback to legacy fields
+    const finalBasePrice = basePrice !== undefined ? basePrice : price;
+    const finalTotalPrice = totalPrice;
+    const finalNumberOfDays = numberOfDays || 1;
+    
+    const requiredFields = !userId || (!stableId && !trainerId) || !bookingType || !startDate || !finalTotalPrice || !clientId;
     const stableBookingMissingHorses = !isTrainerBooking && !numberOfHorses;
     
     if (requiredFields || stableBookingMissingHorses) {
@@ -374,9 +401,35 @@ export async function POST(req) {
     }
 
     // Validate prices
-    if (price < 0 || totalPrice < 0) {
+    if (finalBasePrice < 0 || finalTotalPrice < 0 || (additionalServiceCosts !== undefined && additionalServiceCosts < 0)) {
       return NextResponse.json(
         { success: false, message: "Prices cannot be negative" },
+        { status: 400 }
+      );
+    }
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return NextResponse.json(
+        { success: false, message: "Invalid userId format" },
+        { status: 400 }
+      );
+    }
+    if (!mongoose.Types.ObjectId.isValid(clientId)) {
+      return NextResponse.json(
+        { success: false, message: "Invalid clientId format" },
+        { status: 400 }
+      );
+    }
+    if (stableId && !mongoose.Types.ObjectId.isValid(stableId)) {
+      return NextResponse.json(
+        { success: false, message: "Invalid stableId format" },
+        { status: 400 }
+      );
+    }
+    if (ratingUserId && !mongoose.Types.ObjectId.isValid(ratingUserId)) {
+      return NextResponse.json(
+        { success: false, message: "Invalid ratingUserId format" },
         { status: 400 }
       );
     }
@@ -405,17 +458,54 @@ export async function POST(req) {
     }
 
     // Create new booking
-    const newBooking = new BookingStables({
+    const bookingData = {
       userId,
       stableId: stableId || trainerId, // Use trainerId as stableId for trainer bookings
       bookingType,
       startDate: start,
       endDate: end,
       numberOfHorses: isTrainerBooking ? 1 : numberOfHorses, // Default to 1 for trainer bookings
-      price,
-      totalPrice,
-      clientId
-    });
+      basePrice: finalBasePrice,
+      additionalServices: additionalServices || {},
+      servicePriceDetails: servicePriceDetails || {},
+      additionalServiceCosts: additionalServiceCosts || 0,
+      totalPrice: finalTotalPrice,
+      numberOfDays: finalNumberOfDays,
+      clientId,
+      bookingDate: new Date(), // Add the required bookingDate field
+      // Legacy field for backward compatibility
+      price: finalBasePrice
+    };
+
+    // Only add ratinguserid if ratingUserId is provided
+    if (ratingUserId) {
+      bookingData.ratinguserid = ratingUserId;
+    }
+
+    console.log('Creating booking with data:', JSON.stringify(bookingData, null, 2));
+    console.log('Additional services:', JSON.stringify(additionalServices, null, 2));
+    console.log('Service price details:', JSON.stringify(servicePriceDetails, null, 2));
+    
+    const newBooking = new BookingStables(bookingData);
+
+    // Validate the booking before saving
+    const validationError = newBooking.validateSync();
+    if (validationError) {
+      console.error('Validation errors:', validationError.errors);
+      const errorMessages = Object.keys(validationError.errors).map(key => ({
+        field: key,
+        message: validationError.errors[key].message
+      }));
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: "Validation failed", 
+          errors: errorMessages,
+          rawErrors: validationError.errors
+        },
+        { status: 400 }
+      );
+    }
 
     const savedBooking = await newBooking.save();
 
@@ -423,7 +513,8 @@ export async function POST(req) {
     const populatedBooking = await BookingStables.findById(savedBooking._id)
       .populate("userId", "firstName lastName email phoneNumber")
       .populate("clientId", "firstName lastName email phoneNumber _id")
-      .populate("stableId", "Tittle Deatils location coordinates PriceRate");
+      .populate("stableId", "Tittle Deatils location coordinates PriceRate")
+      .populate("ratinguserid", "firstName lastName email phoneNumber _id");
 
     return NextResponse.json(
       {

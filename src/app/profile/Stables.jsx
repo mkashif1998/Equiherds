@@ -101,7 +101,25 @@ export default function Stables() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    console.log('Input change:', name, value); // Debug log
+    
+    // Handle nested field names like "shortTermStay.inStableStrawPrice"
+    if (name.includes('.')) {
+      const [section, field] = name.split('.');
+      setForm((prev) => {
+        const newForm = {
+          ...prev,
+          [section]: {
+            ...prev[section],
+            [field]: value
+          }
+        };
+        console.log('Updated form:', newForm); // Debug log
+        return newForm;
+      });
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleCheckboxChange = (fieldPath, checked) => {
@@ -112,22 +130,6 @@ export default function Stables() {
       setForm((prev) => ({
         ...prev,
         [section]: {
-          inStableStraw: false,
-          inStableShavings: false,
-          inFieldAlone: false,
-          inFieldHerd: false,
-          inStableStrawPrice: "",
-          inStableShavingsPrice: "",
-          inFieldAlonePrice: "",
-          inFieldHerdPrice: "",
-          eventingCourse: false,
-          canterTrack: false,
-          jumpingTrack: false,
-          dressageTrack: false,
-          eventingCoursePrice: "",
-          canterTrackPrice: "",
-          jumpingTrackPrice: "",
-          dressageTrackPrice: "",
           ...prev[section],
           [field]: checked
         }
@@ -318,7 +320,7 @@ export default function Stables() {
 
       let saved;
       if (editingId) {
-        console.log(payload);
+        console.log("payload",payload);
         saved = await putRequest(`/api/stables/${editingId}`, payload);
       } else {
         saved = await postRequest("/api/stables", payload);
@@ -327,7 +329,41 @@ export default function Stables() {
       // Always refresh from server to avoid any local mismatches
       await loadStables();
 
-      setForm({ title: "", details: "", location: "", coordinates: null, images: [], slots: [], priceRates: [], status: "active" });
+      setForm({ 
+        title: "", details: "", location: "", coordinates: null, images: [], slots: [], priceRates: [], status: "active",
+        shortTermStay: {
+          inStableStraw: false,
+          inStableShavings: false,
+          inFieldAlone: false,
+          inFieldHerd: false,
+          inStableStrawPrice: "",
+          inStableShavingsPrice: "",
+          inFieldAlonePrice: "",
+          inFieldHerdPrice: ""
+        },
+        longTermStay: {
+          inStableStraw: false,
+          inStableShavings: false,
+          inFieldAlone: false,
+          inFieldHerd: false,
+          inStableStrawPrice: "",
+          inStableShavingsPrice: "",
+          inFieldAlonePrice: "",
+          inFieldHerdPrice: ""
+        },
+        stallionsAccepted: false,
+        stallionsPrice: "",
+        eventPricing: {
+          eventingCourse: false,
+          canterTrack: false,
+          jumpingTrack: false,
+          dressageTrack: false,
+          eventingCoursePrice: "",
+          canterTrackPrice: "",
+          jumpingTrackPrice: "",
+          dressageTrackPrice: ""
+        }
+      });
       setImagePreviews([]);
       setSlotInput({ day: "", startTime: "", endTime: "" });
       setPriceRateInput({ price: "", rateType: "" });
@@ -358,6 +394,38 @@ export default function Stables() {
       slots: stable.slots || [],
       priceRates: stable.priceRates || [],
       status: stable.status || "active",
+      shortTermStay: stable.shortTermStay || {
+        inStableStraw: false,
+        inStableShavings: false,
+        inFieldAlone: false,
+        inFieldHerd: false,
+        inStableStrawPrice: "",
+        inStableShavingsPrice: "",
+        inFieldAlonePrice: "",
+        inFieldHerdPrice: ""
+      },
+      longTermStay: stable.longTermStay || {
+        inStableStraw: false,
+        inStableShavings: false,
+        inFieldAlone: false,
+        inFieldHerd: false,
+        inStableStrawPrice: "",
+        inStableShavingsPrice: "",
+        inFieldAlonePrice: "",
+        inFieldHerdPrice: ""
+      },
+      stallionsAccepted: stable.stallionsAccepted || false,
+      stallionsPrice: stable.stallionsPrice || "",
+      eventPricing: stable.eventPricing || {
+        eventingCourse: false,
+        canterTrack: false,
+        jumpingTrack: false,
+        dressageTrack: false,
+        eventingCoursePrice: "",
+        canterTrackPrice: "",
+        jumpingTrackPrice: "",
+        dressageTrackPrice: ""
+      }
     });
     setImagePreviews(stable.images);
     setSlotInput({ day: "", startTime: "", endTime: "" });
@@ -463,7 +531,41 @@ export default function Stables() {
           className="px-4 py-2 rounded bg-[color:var(--primary)] !text-white font-medium hover:bg-[color:var(--primary)]/90 transition cu$or-pointer"
           onClick={() => {
             setEditingId("");
-            setForm({ title: "", details: "", location: "", coordinates: null, images: [], slots: [], priceRates: [], status: "active" });
+            setForm({ 
+        title: "", details: "", location: "", coordinates: null, images: [], slots: [], priceRates: [], status: "active",
+        shortTermStay: {
+          inStableStraw: false,
+          inStableShavings: false,
+          inFieldAlone: false,
+          inFieldHerd: false,
+          inStableStrawPrice: "",
+          inStableShavingsPrice: "",
+          inFieldAlonePrice: "",
+          inFieldHerdPrice: ""
+        },
+        longTermStay: {
+          inStableStraw: false,
+          inStableShavings: false,
+          inFieldAlone: false,
+          inFieldHerd: false,
+          inStableStrawPrice: "",
+          inStableShavingsPrice: "",
+          inFieldAlonePrice: "",
+          inFieldHerdPrice: ""
+        },
+        stallionsAccepted: false,
+        stallionsPrice: "",
+        eventPricing: {
+          eventingCourse: false,
+          canterTrack: false,
+          jumpingTrack: false,
+          dressageTrack: false,
+          eventingCoursePrice: "",
+          canterTrackPrice: "",
+          jumpingTrackPrice: "",
+          dressageTrackPrice: ""
+        }
+      });
             setImagePreviews([]);
             setSlotInput({ day: "", startTime: "", endTime: "" });
             setPriceRateInput({ price: "", rateType: "" });
@@ -721,7 +823,41 @@ export default function Stables() {
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
               onClick={() => {
                 setShowModal(false);
-                setForm({ title: "", details: "", location: "", coordinates: null, images: [], slots: [], priceRates: [], status: "active" });
+                setForm({ 
+        title: "", details: "", location: "", coordinates: null, images: [], slots: [], priceRates: [], status: "active",
+        shortTermStay: {
+          inStableStraw: false,
+          inStableShavings: false,
+          inFieldAlone: false,
+          inFieldHerd: false,
+          inStableStrawPrice: "",
+          inStableShavingsPrice: "",
+          inFieldAlonePrice: "",
+          inFieldHerdPrice: ""
+        },
+        longTermStay: {
+          inStableStraw: false,
+          inStableShavings: false,
+          inFieldAlone: false,
+          inFieldHerd: false,
+          inStableStrawPrice: "",
+          inStableShavingsPrice: "",
+          inFieldAlonePrice: "",
+          inFieldHerdPrice: ""
+        },
+        stallionsAccepted: false,
+        stallionsPrice: "",
+        eventPricing: {
+          eventingCourse: false,
+          canterTrack: false,
+          jumpingTrack: false,
+          dressageTrack: false,
+          eventingCoursePrice: "",
+          canterTrackPrice: "",
+          jumpingTrackPrice: "",
+          dressageTrackPrice: ""
+        }
+      });
                 setImagePreviews([]);
                 setSlotInput({ day: "", startTime: "", endTime: "" });
                 setPriceRateInput({ price: "", rateType: "" });
@@ -757,25 +893,7 @@ export default function Stables() {
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-brand mb-1">Location</label>
-                <input
-                  type="text"
-                  name="location"
-                  value={form.location}
-                  onChange={handleInputChange}
-                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] mb-3"
-                  placeholder="Enter stable location (e.g., City, State, Address)"
-                  required
-                />
-                <LocationPicker
-                  onLocationChange={handleLocationChange}
-                  onLocationTextChange={handleLocationTextChange}
-                  initialLocation={form.coordinates}
-                  initialLocationText={form.location}
-                  height="250px"
-                />
-              </div>
+             
               <div>
                 <label className="block text-sm font-medium text-brand mb-1">Status</label>
                 <select
@@ -798,7 +916,7 @@ export default function Stables() {
                     value={priceRateInput.price}
                     onChange={handlePriceRateInputChange}
                     className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] flex-1 min-w-0"
-                    placeholder="Price"
+                    placeholder="Price per day"
                     min={0}
                   />
                   <select
@@ -950,10 +1068,10 @@ export default function Stables() {
                           <input
                             type="number"
                             name="shortTermStay.inStableStrawPrice"
-                            value={form.shortTermStay?.inStableStrawPrice || ""}
+                            value={form.shortTermStay.inStableStrawPrice || ""}
                             onChange={handleInputChange}
-                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
-                            placeholder="Price"
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-32"
+                            placeholder="Price per day"
                             min="0"
                           />
                         )}
@@ -971,10 +1089,10 @@ export default function Stables() {
                           <input
                             type="number"
                             name="shortTermStay.inStableShavingsPrice"
-                            value={form.shortTermStay?.inStableShavingsPrice || ""}
+                            value={form.shortTermStay.inStableShavingsPrice || ""}
                             onChange={handleInputChange}
-                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
-                            placeholder="Price"
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-32"
+                            placeholder="Price per day"
                             min="0"
                           />
                         )}
@@ -992,10 +1110,10 @@ export default function Stables() {
                           <input
                             type="number"
                             name="shortTermStay.inFieldAlonePrice"
-                            value={form.shortTermStay?.inFieldAlonePrice || ""}
+                            value={form.shortTermStay.inFieldAlonePrice || ""}
                             onChange={handleInputChange}
-                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
-                            placeholder="Price"
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-32"
+                            placeholder="Price per day"
                             min="0"
                           />
                         )}
@@ -1013,10 +1131,10 @@ export default function Stables() {
                           <input
                             type="number"
                             name="shortTermStay.inFieldHerdPrice"
-                            value={form.shortTermStay?.inFieldHerdPrice || ""}
+                            value={form.shortTermStay.inFieldHerdPrice || ""}
                             onChange={handleInputChange}
-                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
-                            placeholder="Price"
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-32"
+                            placeholder="Price per day"
                             min="0"
                           />
                         )}
@@ -1040,10 +1158,10 @@ export default function Stables() {
                           <input
                             type="number"
                             name="longTermStay.inStableStrawPrice"
-                            value={form.longTermStay?.inStableStrawPrice || ""}
+                            value={form.longTermStay.inStableStrawPrice || ""}
                             onChange={handleInputChange}
-                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
-                            placeholder="Price"
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-32"
+                            placeholder="Price per day"
                             min="0"
                           />
                         )}
@@ -1061,10 +1179,10 @@ export default function Stables() {
                           <input
                             type="number"
                             name="longTermStay.inStableShavingsPrice"
-                            value={form.longTermStay?.inStableShavingsPrice || ""}
+                            value={form.longTermStay.inStableShavingsPrice || ""}
                             onChange={handleInputChange}
-                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
-                            placeholder="Price"
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-32"
+                            placeholder="Price per day"
                             min="0"
                           />
                         )}
@@ -1082,10 +1200,10 @@ export default function Stables() {
                           <input
                             type="number"
                             name="longTermStay.inFieldAlonePrice"
-                            value={form.longTermStay?.inFieldAlonePrice || ""}
+                            value={form.longTermStay.inFieldAlonePrice || ""}
                             onChange={handleInputChange}
-                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
-                            placeholder="Price"
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-32"
+                            placeholder="Price per day"
                             min="0"
                           />
                         )}
@@ -1103,10 +1221,10 @@ export default function Stables() {
                           <input
                             type="number"
                             name="longTermStay.inFieldHerdPrice"
-                            value={form.longTermStay?.inFieldHerdPrice || ""}
+                            value={form.longTermStay.inFieldHerdPrice || ""}
                             onChange={handleInputChange}
-                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
-                            placeholder="Price"
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-32"
+                            placeholder="Price per day"
                             min="0"
                           />
                         )}
@@ -1138,8 +1256,8 @@ export default function Stables() {
                             name="stallionsPrice"
                             value={form.stallionsPrice || ""}
                             onChange={handleInputChange}
-                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
-                            placeholder="Price"
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-32"
+                            placeholder="Price per day"
                             min="0"
                           />
                         )}
@@ -1163,10 +1281,10 @@ export default function Stables() {
                           <input
                             type="number"
                             name="eventPricing.eventingCoursePrice"
-                            value={form.eventPricing?.eventingCoursePrice || ""}
+                            value={form.eventPricing.eventingCoursePrice || ""}
                             onChange={handleInputChange}
-                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
-                            placeholder="Price"
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-32"
+                            placeholder="Price per day"
                             min="0"
                           />
                         )}
@@ -1184,10 +1302,10 @@ export default function Stables() {
                           <input
                             type="number"
                             name="eventPricing.canterTrackPrice"
-                            value={form.eventPricing?.canterTrackPrice || ""}
+                            value={form.eventPricing.canterTrackPrice || ""}
                             onChange={handleInputChange}
-                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
-                            placeholder="Price"
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-32"
+                            placeholder="Price per day"
                             min="0"
                           />
                         )}
@@ -1205,10 +1323,10 @@ export default function Stables() {
                           <input
                             type="number"
                             name="eventPricing.jumpingTrackPrice"
-                            value={form.eventPricing?.jumpingTrackPrice || ""}
+                            value={form.eventPricing.jumpingTrackPrice || ""}
                             onChange={handleInputChange}
-                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
-                            placeholder="Price"
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-32"
+                            placeholder="Price per day"
                             min="0"
                           />
                         )}
@@ -1226,10 +1344,10 @@ export default function Stables() {
                           <input
                             type="number"
                             name="eventPricing.dressageTrackPrice"
-                            value={form.eventPricing?.dressageTrackPrice || ""}
+                            value={form.eventPricing.dressageTrackPrice || ""}
                             onChange={handleInputChange}
-                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-24"
-                            placeholder="Price"
+                            className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] w-32"
+                            placeholder="Price per day"
                             min="0"
                           />
                         )}
@@ -1239,6 +1357,25 @@ export default function Stables() {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-brand mb-1">Location</label>
+                <input
+                  type="text"
+                  name="location"
+                  value={form.location}
+                  onChange={handleInputChange}
+                  className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring focus:border-[color:var(--primary)] mb-3"
+                  placeholder="Enter stable location (e.g., City, State, Address)"
+                  required
+                />
+                <LocationPicker
+                  onLocationChange={handleLocationChange}
+                  onLocationTextChange={handleLocationTextChange}
+                  initialLocation={form.coordinates}
+                  initialLocationText={form.location}
+                  height="250px"
+                />
+              </div>
               <button
                 type="submit"
                 className="w-full py-2 rounded bg-[color:var(--primary)] text-white font-medium hover:bg-[color:var(--primary)]/90 transition"

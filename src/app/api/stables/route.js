@@ -80,7 +80,11 @@ export async function POST(req) {
   await connectDB();
   try {
     const body = await parseBody(req);
-    const { userId, Tittle, Deatils, location, coordinates, image, Rating, noofRatingCustomers, PriceRate, Slotes, status } = body || {};
+    const { 
+      userId, Tittle, Deatils, location, coordinates, image, Rating, noofRatingCustomers, 
+      PriceRate, Slotes, status, shortTermStay, longTermStay, stallionsAccepted, 
+      stallionsPrice, eventPricing 
+    } = body || {};
 
     if (!userId || !Tittle || !Deatils) {
       return NextResponse.json({ message: "userId, Tittle, Deatils are required" }, { status: 400 });
@@ -115,6 +119,12 @@ export async function POST(req) {
         startTime: String(s?.startTime),
         endTime: String(s?.endTime),
       })) : [],
+      // New fields
+      shortTermStay: shortTermStay || {},
+      longTermStay: longTermStay || {},
+      stallionsAccepted: Boolean(stallionsAccepted),
+      stallionsPrice: stallionsPrice ? Number(stallionsPrice) : null,
+      eventPricing: eventPricing || {}
     });
 
     return NextResponse.json(stable, { status: 201 });

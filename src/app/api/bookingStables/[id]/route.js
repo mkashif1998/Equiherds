@@ -44,7 +44,8 @@ export async function GET(req, { params }) {
     const booking = await BookingStables.findById(id)
       .populate("userId", "firstName lastName email phoneNumber")
       .populate("clientId", "firstName lastName email phoneNumber _id")
-      .populate("stableId", "Tittle Deatils location coordinates PriceRate");
+      .populate("stableId", "Tittle Deatils location coordinates PriceRate")
+      .populate("ratinguserid", "firstName lastName email phoneNumber _id"); // <-- Add ratinguserid population
 
     if (!booking) {
       return NextResponse.json(
@@ -96,9 +97,16 @@ export async function PUT(req, { params }) {
       startDate,
       endDate,
       numberOfHorses,
-      price,
+      basePrice,
+      additionalServices,
+      servicePriceDetails,
+      additionalServiceCosts,
       totalPrice,
-      clientId
+      numberOfDays,
+      clientId,
+      ratingUserId,
+      // Legacy fields for backward compatibility
+      price
     } = body;
 
     // Validate bookingType if provided
@@ -139,7 +147,7 @@ export async function PUT(req, { params }) {
     }
 
     // Validate prices if provided
-    if ((price && price < 0) || (totalPrice && totalPrice < 0)) {
+    if ((basePrice && basePrice < 0) || (price && price < 0) || (totalPrice && totalPrice < 0) || (additionalServiceCosts && additionalServiceCosts < 0)) {
       return NextResponse.json(
         { success: false, message: "Prices cannot be negative" },
         { status: 400 }
@@ -168,6 +176,17 @@ export async function PUT(req, { params }) {
       }
     }
 
+    // Check if ratingUserId exists (if ratingUserId is being updated)
+    if (ratingUserId) {
+      const ratingUser = await User.findById(ratingUserId);
+      if (!ratingUser) {
+        return NextResponse.json(
+          { success: false, message: "Rating user not found" },
+          { status: 404 }
+        );
+      }
+    }
+
     // Prepare update object
     const updateData = {};
     if (userId) updateData.userId = userId;
@@ -176,9 +195,16 @@ export async function PUT(req, { params }) {
     if (startDate) updateData.startDate = new Date(startDate);
     if (endDate) updateData.endDate = new Date(endDate);
     if (numberOfHorses) updateData.numberOfHorses = numberOfHorses;
-    if (price) updateData.price = price;
+    if (basePrice !== undefined) updateData.basePrice = basePrice;
+    if (additionalServices !== undefined) updateData.additionalServices = additionalServices;
+    if (servicePriceDetails !== undefined) updateData.servicePriceDetails = servicePriceDetails;
+    if (additionalServiceCosts !== undefined) updateData.additionalServiceCosts = additionalServiceCosts;
     if (totalPrice) updateData.totalPrice = totalPrice;
+    if (numberOfDays) updateData.numberOfDays = numberOfDays;
     if (clientId) updateData.clientId = clientId;
+    if (ratingUserId) updateData.ratinguserid = ratingUserId;
+    // Legacy field for backward compatibility
+    if (price) updateData.price = price;
     // Update the booking
     const updatedBooking = await BookingStables.findByIdAndUpdate(
       id,
@@ -186,7 +212,8 @@ export async function PUT(req, { params }) {
       { new: true, runValidators: true }
     ).populate("userId", "firstName lastName email phoneNumber")
      .populate("clientId", "firstName lastName email phoneNumber _id")
-     .populate("stableId", "Tittle Deatils location coordinates PriceRate");
+     .populate("stableId", "Tittle Deatils location coordinates PriceRate")
+     .populate("ratinguserid", "firstName lastName email phoneNumber _id"); // <-- Add ratinguserid population
 
     return NextResponse.json({
       success: true,

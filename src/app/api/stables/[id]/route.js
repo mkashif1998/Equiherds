@@ -96,7 +96,11 @@ export async function PUT(req, { params }) {
   try {
     const { id } = await params;
     const body = await parseBody(req);
-    const { userId, Tittle, Deatils, location, coordinates, image, Rating, PriceRate, Slotes, status, noofRatingCustomers  } = body || {};
+    const { 
+      userId, Tittle, Deatils, location, coordinates, image, Rating, PriceRate, Slotes, 
+      status, noofRatingCustomers, shortTermStay, longTermStay, stallionsAccepted, 
+      stallionsPrice, eventPricing 
+    } = body || {};
 
     const update = {};
     if (userId !== undefined) update.userId = userId;
@@ -108,6 +112,13 @@ export async function PUT(req, { params }) {
     if (Rating !== undefined) update.Rating = Number(Rating);
     if (noofRatingCustomers !== undefined) update.noofRatingCustomers = Number(noofRatingCustomers);
     if (status !== undefined) update.status = status;
+
+    // New fields
+    if (shortTermStay !== undefined) update.shortTermStay = shortTermStay;
+    if (longTermStay !== undefined) update.longTermStay = longTermStay;
+    if (stallionsAccepted !== undefined) update.stallionsAccepted = Boolean(stallionsAccepted);
+    if (stallionsPrice !== undefined) update.stallionsPrice = stallionsPrice ? Number(stallionsPrice) : null;
+    if (eventPricing !== undefined) update.eventPricing = eventPricing;
 
     const normalizedPriceRate = typeof PriceRate === "string" ? JSON.parse(PriceRate) : PriceRate;
     if (normalizedPriceRate !== undefined) {

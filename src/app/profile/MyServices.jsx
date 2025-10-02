@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getRequest, postRequest } from "@/service";
+import { getRequest, postRequest, putRequest } from "@/service";
 import { getUserData } from "../utils/localStorage";
 import { Eye, Star, Home, User } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -140,6 +140,10 @@ export default function MyServices() {
   };
 
   const handleRatingClick = (booking) => {
+    // Don't open modal if already rated
+    if (booking.ratinguserid) {
+      return;
+    }
     setSelectedBooking(booking);
     setIsRatingModalOpen(true);
     setRating(0);
@@ -160,6 +164,7 @@ export default function MyServices() {
 
     try {
       setRatingLoading(true);
+      const userData = getUserData();
 
       let response;
       if (activeTab === "stable") {
@@ -185,7 +190,23 @@ export default function MyServices() {
       }
 
       if (response.success) {
-        toast.success('Rating submitted successfully!');
+        // Also update the booking with rating user ID
+        try {
+          const bookingUpdateResponse = await putRequest(`/api/bookingStables/${selectedBooking._id}`, {
+            ratingUserId: userData.id
+          });
+          
+          if (bookingUpdateResponse.success) {
+            toast.success('Rating submitted and booking updated successfully!');
+          } else {
+            toast.success('Rating submitted successfully!');
+            console.warn('Failed to update booking with rating user ID:', bookingUpdateResponse.message);
+          }
+        } catch (updateError) {
+          toast.success('Rating submitted successfully!');
+          console.warn('Error updating booking with rating user ID:', updateError);
+        }
+        
         closeRatingModal();
       } else {
         toast.error('Failed to submit rating. Please try again.');
@@ -340,11 +361,19 @@ export default function MyServices() {
                                 <Eye size={16} />
                               </button>
                               <button
-                                onClick={() => handleRatingClick(booking)}
-                                className="inline-flex items-center justify-center w-8 h-8 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 rounded-full transition-colors"
-                                title="Rate Service"
+                                onClick={() => !booking.ratinguserid && handleRatingClick(booking)}
+                                className={`inline-flex items-center justify-center w-8 h-8 rounded-full transition-colors ${
+                                  booking.ratinguserid 
+                                    ? "text-yellow-500 cursor-default" 
+                                    : "text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
+                                }`}
+                                title={booking.ratinguserid ? "Already Rated" : "Rate Service"}
+                                disabled={!!booking.ratinguserid}
                               >
-                                <Star size={16} />
+                                <Star 
+                                  size={16} 
+                                  className={booking.ratinguserid ? "fill-yellow-500" : ""}
+                                />
                               </button>
                             </div>
                           </td>
@@ -424,11 +453,19 @@ export default function MyServices() {
                               <Eye size={16} />
                             </button>
                             <button
-                              onClick={() => handleRatingClick(booking)}
-                              className="inline-flex items-center justify-center w-8 h-8 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 rounded-full transition-colors"
-                              title="Rate Service"
+                              onClick={() => !booking.ratinguserid && handleRatingClick(booking)}
+                              className={`inline-flex items-center justify-center w-8 h-8 rounded-full transition-colors ${
+                                booking.ratinguserid 
+                                  ? "text-yellow-500 cursor-default" 
+                                  : "text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
+                              }`}
+                              title={booking.ratinguserid ? "Already Rated" : "Rate Service"}
+                              disabled={!!booking.ratinguserid}
                             >
-                              <Star size={16} />
+                              <Star 
+                                size={16} 
+                                className={booking.ratinguserid ? "fill-yellow-500" : ""}
+                              />
                             </button>
                           </div>
                         </div>
@@ -498,159 +535,312 @@ export default function MyServices() {
 
             {/* Content */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Service Provider Information */}
-                <div className="space-y-4">
-                  <h4 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-                    Service Provider
-                  </h4>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Name</label>
-                      <p className="text-gray-900">
-                        {`${selectedBooking.userId?.firstName || ''} ${selectedBooking.userId?.lastName || ''}`.trim() || 'Unknown Provider'}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Email</label>
-                      <p className="text-gray-900">{selectedBooking.userId?.email || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Phone Number</label>
-                      <p className="text-gray-900">{selectedBooking.userId?.phoneNumber || 'N/A'}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Booking Information */}
-                <div className="space-y-4">
-                  <h4 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-                    Booking Information
-                  </h4>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Status</label>
-                      <div className="mt-1">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          getStatus(selectedBooking.startDate, selectedBooking.endDate) === "Active"
-                            ? "bg-green-100 text-green-700"
-                            : getStatus(selectedBooking.startDate, selectedBooking.endDate) === "Completed"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-yellow-100 text-yellow-700"
-                        }`}>
-                          {getStatus(selectedBooking.startDate, selectedBooking.endDate)}
-                        </span>
+              <div className="space-y-6">
+                {/* First Row: Service Provider Information and Booking Dates */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Service Provider Information */}
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
+                      Service Provider
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Name</label>
+                        <p className="text-gray-900">
+                          {`${selectedBooking.userId?.firstName || ''} ${selectedBooking.userId?.lastName || ''}`.trim() || 'Unknown Provider'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Email</label>
+                        <p className="text-gray-900">{selectedBooking.userId?.email || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Phone Number</label>
+                        <p className="text-gray-900">{selectedBooking.userId?.phoneNumber || 'N/A'}</p>
                       </div>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Service Type</label>
-                      <p className="text-gray-900">{getServiceType(selectedBooking.bookingType, activeTab)}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Number of Horses</label>
-                      <p className="text-gray-900">{selectedBooking.numberOfHorses}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Price per {selectedBooking.bookingType}</label>
-                      <p className="text-gray-900">${selectedBooking.price}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Total Price</label>
-                      <p className="text-lg font-bold text-brand">${selectedBooking.totalPrice}</p>
+                  </div>
+
+                  {/* Booking Dates */}
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
+                      Booking Dates
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Start Date</label>
+                        <p className="text-gray-900">{formatDate(selectedBooking.startDate)}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">End Date</label>
+                        <p className="text-gray-900">{formatDate(selectedBooking.endDate)}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Booking Created</label>
+                        <p className="text-gray-900">
+                          {new Date(selectedBooking.createdAt).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Dates */}
-                <div className="space-y-4">
-                  <h4 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-                    Booking Dates
-                  </h4>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Start Date</label>
-                      <p className="text-gray-900">{formatDate(selectedBooking.startDate)}</p>
+                {/* Second Row: Booking Information and Service Information */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Booking Information */}
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
+                      Booking Information
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Status</label>
+                        <div className="mt-1">
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            getStatus(selectedBooking.startDate, selectedBooking.endDate) === "Active"
+                              ? "bg-green-100 text-green-700"
+                              : getStatus(selectedBooking.startDate, selectedBooking.endDate) === "Completed"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-yellow-100 text-yellow-700"
+                          }`}>
+                            {getStatus(selectedBooking.startDate, selectedBooking.endDate)}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Service Type</label>
+                        <p className="text-gray-900">{getServiceType(selectedBooking.bookingType, activeTab)}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Number of Horses</label>
+                        <p className="text-gray-900">{selectedBooking.numberOfHorses}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Number of Days</label>
+                        <p className="text-gray-900">{selectedBooking.numberOfDays || 'N/A'} days</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Base Price per {selectedBooking.bookingType}</label>
+                        <p className="text-gray-900">${selectedBooking.basePrice || selectedBooking.price}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Total Price</label>
+                        <p className="text-lg font-bold text-brand">${selectedBooking.totalPrice}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Rating Status</label>
+                        <div className="flex items-center gap-2">
+                          {selectedBooking.ratinguserid ? (
+                            <>
+                              <Star size={16} className="text-yellow-500 fill-yellow-500" />
+                              <span className="text-sm text-green-600 font-medium">Rated</span>
+                            </>
+                          ) : (
+                            <>
+                              <Star size={16} className="text-gray-400" />
+                              <span className="text-sm text-gray-500">Not Rated</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">End Date</label>
-                      <p className="text-gray-900">{formatDate(selectedBooking.endDate)}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Booking Created</label>
-                      <p className="text-gray-900">
-                        {new Date(selectedBooking.createdAt).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
+                  </div>
+
+                  {/* Service Information */}
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
+                      {activeTab === "stable" ? "Stable Information" : "Trainer Information"}
+                    </h4>
+                    <div className="space-y-3">
+                      {activeTab === "stable" ? (
+                        <>
+                          <div>
+                            <label className="text-sm font-medium text-gray-600">Stable Name</label>
+                            <p className="text-gray-900">{selectedBooking.stableId?.Tittle || 'Unknown Stable'}</p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-600">Description</label>
+                            <p className="text-gray-900">{selectedBooking.stableId?.Deatils || 'No description available'}</p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-600">Location</label>
+                            <p className="text-gray-900">{selectedBooking.stableId?.location || 'Location not specified'}</p>
+                          </div>
+                          {selectedBooking.stableId?.coordinates && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-600">Coordinates</label>
+                              <p className="text-gray-900 text-sm">
+                                Lat: {selectedBooking.stableId.coordinates.lat}, 
+                                Lng: {selectedBooking.stableId.coordinates.lng}
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <label className="text-sm font-medium text-gray-600">Trainer Name</label>
+                            <p className="text-gray-900">{selectedBooking.trainerId?.title || 'Unknown Trainer'}</p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-600">Description</label>
+                            <p className="text-gray-900">{selectedBooking.trainerId?.details || 'No description available'}</p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-600">Experience</label>
+                            <p className="text-gray-900">{selectedBooking.trainerId?.Experience || 'Not specified'}</p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-600">Location</label>
+                            <p className="text-gray-900">{selectedBooking.trainerId?.location || 'Location not specified'}</p>
+                          </div>
+                          {selectedBooking.trainerId?.coordinates && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-600">Coordinates</label>
+                              <p className="text-gray-900 text-sm">
+                                Lat: {selectedBooking.trainerId.coordinates.lat}, 
+                                Lng: {selectedBooking.trainerId.coordinates.lng}
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Service Provider Information */}
-                <div className="space-y-4">
-                  <h4 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-                    {activeTab === "stable" ? "Stable Information" : "Trainer Information"}
-                  </h4>
-                  <div className="space-y-3">
-                    {activeTab === "stable" ? (
-                      <>
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Stable Name</label>
-                          <p className="text-gray-900">{selectedBooking.stableId?.Tittle || 'Unknown Stable'}</p>
+                {/* Additional Services & Pricing Breakdown */}
+                {selectedBooking.additionalServices && selectedBooking.servicePriceDetails && (
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
+                      Additional Services & Pricing
+                    </h4>
+                    <div className="space-y-4">
+                      {/* Base Price */}
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-gray-700">Base Price ({selectedBooking.bookingType})</span>
+                          <span className="font-bold text-gray-900">${selectedBooking.basePrice || selectedBooking.price}</span>
                         </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Description</label>
-                          <p className="text-gray-900">{selectedBooking.stableId?.Deatils || 'No description available'}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Location</label>
-                          <p className="text-gray-900">{selectedBooking.stableId?.location || 'Location not specified'}</p>
-                        </div>
-                        {selectedBooking.stableId?.coordinates && (
-                          <div>
-                            <label className="text-sm font-medium text-gray-600">Coordinates</label>
-                            <p className="text-gray-900 text-sm">
-                              Lat: {selectedBooking.stableId.coordinates.lat}, 
-                              Lng: {selectedBooking.stableId.coordinates.lng}
-                            </p>
+                      </div>
+
+                      {/* Additional Services */}
+                      {selectedBooking.additionalServiceCosts > 0 && (
+                        <div className="space-y-3">
+                          <h5 className="font-medium text-gray-700">Additional Services:</h5>
+                          
+                          {/* Short-term Stay */}
+                          {selectedBooking.additionalServices.shortTermStay?.selected && selectedBooking.servicePriceDetails.shortTermStay && (
+                            <div className="bg-blue-50 p-3 rounded-lg">
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-blue-800">
+                                  Short-term Stay ({selectedBooking.additionalServices.shortTermStay.selected.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())})
+                                </span>
+                                <span className="text-sm font-medium text-blue-700">
+                                  ${selectedBooking.servicePriceDetails.shortTermStay.pricePerDay}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.shortTermStay.price}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Long-term Stay */}
+                          {selectedBooking.additionalServices.longTermStay?.selected && selectedBooking.servicePriceDetails.longTermStay && (
+                            <div className="bg-green-50 p-3 rounded-lg">
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-green-800">
+                                  Long-term Stay ({selectedBooking.additionalServices.longTermStay.selected.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())})
+                                </span>
+                                <span className="text-sm font-medium text-green-700">
+                                  ${selectedBooking.servicePriceDetails.longTermStay.pricePerDay}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.longTermStay.price}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Stallions */}
+                          {selectedBooking.additionalServices.stallionsAccepted && selectedBooking.servicePriceDetails.stallions && (
+                            <div className="bg-yellow-50 p-3 rounded-lg">
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-yellow-800">Stallions Accepted</span>
+                                <span className="text-sm font-medium text-yellow-700">
+                                  ${selectedBooking.servicePriceDetails.stallions.pricePerDay}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.stallions.price}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Event Pricing */}
+                          {selectedBooking.additionalServices.eventPricing && (
+                            <div className="space-y-2">
+                              {selectedBooking.additionalServices.eventPricing.eventingCourse && selectedBooking.servicePriceDetails.eventPricing.eventingCoursePrice > 0 && (
+                                <div className="bg-purple-50 p-3 rounded-lg">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-purple-800">Eventing Course</span>
+                                    <span className="text-sm font-medium text-purple-700">
+                                      ${selectedBooking.servicePriceDetails.eventPricing.eventingCoursePrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.eventPricing.eventingCoursePrice}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                              {selectedBooking.additionalServices.eventPricing.canterTrack && selectedBooking.servicePriceDetails.eventPricing.canterTrackPrice > 0 && (
+                                <div className="bg-purple-50 p-3 rounded-lg">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-purple-800">Canter Track</span>
+                                    <span className="text-sm font-medium text-purple-700">
+                                      ${selectedBooking.servicePriceDetails.eventPricing.canterTrackPrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.eventPricing.canterTrackPrice}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                              {selectedBooking.additionalServices.eventPricing.jumpingTrack && selectedBooking.servicePriceDetails.eventPricing.jumpingTrackPrice > 0 && (
+                                <div className="bg-purple-50 p-3 rounded-lg">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-purple-800">Jumping Track</span>
+                                    <span className="text-sm font-medium text-purple-700">
+                                      ${selectedBooking.servicePriceDetails.eventPricing.jumpingTrackPrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.eventPricing.jumpingTrackPrice}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                              {selectedBooking.additionalServices.eventPricing.dressageTrack && selectedBooking.servicePriceDetails.eventPricing.dressageTrackPrice > 0 && (
+                                <div className="bg-purple-50 p-3 rounded-lg">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-purple-800">Dressage Track</span>
+                                    <span className="text-sm font-medium text-purple-700">
+                                      ${selectedBooking.servicePriceDetails.eventPricing.dressageTrackPrice / selectedBooking.numberOfDays}/day × {selectedBooking.numberOfDays} days = ${selectedBooking.servicePriceDetails.eventPricing.dressageTrackPrice}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Additional Services Total */}
+                          <div className="bg-gray-100 p-3 rounded-lg">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium text-gray-700">Additional Services Total</span>
+                              <span className="font-bold text-gray-900">${selectedBooking.additionalServiceCosts}</span>
+                            </div>
                           </div>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Trainer Name</label>
-                          <p className="text-gray-900">{selectedBooking.trainerId?.title || 'Unknown Trainer'}</p>
                         </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Description</label>
-                          <p className="text-gray-900">{selectedBooking.trainerId?.details || 'No description available'}</p>
+                      )}
+
+                      {/* Grand Total */}
+                      <div className="bg-brand/10 p-4 rounded-lg border-2 border-brand/20">
+                        <div className="flex justify-between items-center">
+                          <span className="text-lg font-bold text-brand">Grand Total</span>
+                          <span className="text-xl font-bold text-brand">${selectedBooking.totalPrice}</span>
                         </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Experience</label>
-                          <p className="text-gray-900">{selectedBooking.trainerId?.Experience || 'Not specified'}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-600">Location</label>
-                          <p className="text-gray-900">{selectedBooking.trainerId?.location || 'Location not specified'}</p>
-                        </div>
-                        {selectedBooking.trainerId?.coordinates && (
-                          <div>
-                            <label className="text-sm font-medium text-gray-600">Coordinates</label>
-                            <p className="text-gray-900 text-sm">
-                              Lat: {selectedBooking.trainerId.coordinates.lat}, 
-                              Lng: {selectedBooking.trainerId.coordinates.lng}
-                            </p>
-                          </div>
-                        )}
-                      </>
-                    )}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
