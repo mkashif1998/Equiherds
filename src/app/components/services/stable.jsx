@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { Checkbox } from "antd";
 import { getRequest } from "@/service";
 
 export default function StableList() {
@@ -17,6 +18,11 @@ export default function StableList() {
   const [selectedStable, setSelectedStable] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // New filters
+  const [stayType, setStayType] = useState("");
+  const [stallionsAccepted, setStallionsAccepted] = useState(false);
+  const [eventFacilities, setEventFacilities] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,6 +79,12 @@ export default function StableList() {
                 }))
               : [],
             status: d?.status || "active",
+            // New fields for filtering
+            shortTermStay: d?.shortTermStay || {},
+            longTermStay: d?.longTermStay || {},
+            stallionsAccepted: Boolean(d?.stallionsAccepted),
+            stallionsPrice: d?.stallionsPrice || null,
+            eventPricing: d?.eventPricing || {},
           };
         }) : [];
         if (!cancelled) setItems(normalized);
@@ -95,10 +107,14 @@ export default function StableList() {
     setMinRating(0);
     setSearch("");
     setSelectedDay("");
+    setStayType("");
+    setStallionsAccepted(false);
+    setEventFacilities([]);
   }, [items]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
+    console.log('Filter values:', { stayType, stallionsAccepted, eventFacilities, search, minRating, priceMin, priceMax, selectedDay });
     return items.filter((s) => {
       const matchesSearch = term
         ? (s.title || "").toLowerCase().includes(term) || 
@@ -109,9 +125,47 @@ export default function StableList() {
       const price = Number(s.price || 0);
       const matchesPrice = price >= priceMin && price <= priceMax;
       const matchesDay = selectedDay ? s.slots.some(slot => slot.date.toLowerCase() === selectedDay.toLowerCase()) : true;
-      return matchesSearch && matchesRating && matchesPrice && matchesDay;
+      
+      // New filter logic
+      const matchesStayType = !stayType || (
+        stayType === "shortTerm" ? (
+          s.shortTermStay?.inStableStraw === true || 
+          s.shortTermStay?.inStableShavings === true || 
+          s.shortTermStay?.inFieldAlone === true || 
+          s.shortTermStay?.inFieldHerd === true
+        ) : stayType === "longTerm" ? (
+          s.longTermStay?.inStableStraw === true || 
+          s.longTermStay?.inStableShavings === true || 
+          s.longTermStay?.inFieldAlone === true || 
+          s.longTermStay?.inFieldHerd === true
+        ) : true
+      );
+      
+      const matchesStallions = !stallionsAccepted || s.stallionsAccepted;
+      
+      const matchesEventFacilities = eventFacilities.length === 0 || eventFacilities.some(facility => 
+        s.eventPricing?.[facility] === true
+      );
+      
+      const result = matchesSearch && matchesRating && matchesPrice && matchesDay && 
+             matchesStayType && matchesStallions && matchesEventFacilities;
+      
+      // Debug logging for first few items
+      if (items.indexOf(s) < 3) {
+        console.log(`Item ${s.title}:`, {
+          matchesSearch, matchesRating, matchesPrice, matchesDay,
+          matchesStayType, matchesStallions, matchesEventFacilities,
+          result,
+          shortTermStay: s.shortTermStay,
+          longTermStay: s.longTermStay,
+          stallionsAccepted: s.stallionsAccepted,
+          eventPricing: s.eventPricing
+        });
+      }
+      
+      return result;
     });
-  }, [items, search, minRating, priceMin, priceMax, selectedDay]);
+  }, [items, search, minRating, priceMin, priceMax, selectedDay, stayType, stallionsAccepted, eventFacilities]);
 
   function handleReset() {
     const prices = items.map((s) => s.price || 0);
@@ -122,6 +176,9 @@ export default function StableList() {
     setPriceMin(min);
     setPriceMax(max);
     setSelectedDay("");
+    setStayType("");
+    setStallionsAccepted(false);
+    setEventFacilities([]);
   }
 
   function handleStableClick(stable) {
@@ -215,6 +272,49 @@ export default function StableList() {
                 <input id="max-price" type="number" min={priceMin} max={priceMax} value={priceMax} onChange={(e) => setPriceMax(Number(e.target.value))} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none ring-brand/20 transition focus:ring" />
               </div>
             </div>
+          </div>
+
+          <div className="mb-6">
+            <label htmlFor="stay-type" className="mb-2 block text-sm font-medium text-gray-700">Stay Type</label>
+            <select id="stay-type" value={stayType} onChange={(e) => setStayType(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none ring-brand/20 transition focus:ring">
+              <option value="">All Stay Types</option>
+              <option value="shortTerm">Short Term Stay</option>
+              <option value="longTerm">Long Term Stay</option>
+            </select>
+          </div>
+
+          <div className="mb-6">
+            <Checkbox
+              checked={stallionsAccepted}
+              onChange={(e) => setStallionsAccepted(e.target.checked)}
+              className="text-sm font-medium text-gray-700"
+            >
+              Accepts Stallions
+            </Checkbox>
+          </div>
+
+          <div className="mb-4">
+            <label className="mb-2 block text-sm font-medium text-gray-700">Event Facilities</label>
+            <Checkbox.Group
+              value={eventFacilities}
+              onChange={(checkedValues) => setEventFacilities(checkedValues)}
+              className="flex flex-col space-y-2"
+            >
+              {[
+                { key: 'eventingCourse', label: 'Eventing Course' },
+                { key: 'canterTrack', label: 'Canter Track' },
+                { key: 'jumpingTrack', label: 'Jumping Track' },
+                { key: 'dressageTrack', label: 'Dressage Track' }
+              ].map((facility) => (
+                <Checkbox
+                  key={facility.key}
+                  value={facility.key}
+                  className="text-sm text-gray-700"
+                >
+                  {facility.label}
+                </Checkbox>
+              ))}
+            </Checkbox.Group>
           </div>
         </div>
       </aside>
@@ -402,6 +502,124 @@ export default function StableList() {
                             <span className="text-sm text-gray-700">{sl.date} {sl.startTime}-{sl.endTime}</span>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stay Options */}
+                  {(selectedStable.shortTermStay || selectedStable.longTermStay) && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-3">Stay Options</h4>
+                      <div className="space-y-3">
+                        {selectedStable.shortTermStay && (
+                          <div>
+                            <h5 className="text-xs font-medium text-gray-600 mb-2">Short Term Stay</h5>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              {selectedStable.shortTermStay.inStableStraw && (
+                                <div className="flex justify-between">
+                                  <span>In Stable (Straw):</span>
+                                  <span className="font-medium">${selectedStable.shortTermStay.inStableStrawPrice || 'N/A'}</span>
+                                </div>
+                              )}
+                              {selectedStable.shortTermStay.inStableShavings && (
+                                <div className="flex justify-between">
+                                  <span>In Stable (Shavings):</span>
+                                  <span className="font-medium">${selectedStable.shortTermStay.inStableShavingsPrice || 'N/A'}</span>
+                                </div>
+                              )}
+                              {selectedStable.shortTermStay.inFieldAlone && (
+                                <div className="flex justify-between">
+                                  <span>In Field (Alone):</span>
+                                  <span className="font-medium">${selectedStable.shortTermStay.inFieldAlonePrice || 'N/A'}</span>
+                                </div>
+                              )}
+                              {selectedStable.shortTermStay.inFieldHerd && (
+                                <div className="flex justify-between">
+                                  <span>In Field (Herd):</span>
+                                  <span className="font-medium">${selectedStable.shortTermStay.inFieldHerdPrice || 'N/A'}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {selectedStable.longTermStay && (
+                          <div>
+                            <h5 className="text-xs font-medium text-gray-600 mb-2">Long Term Stay</h5>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              {selectedStable.longTermStay.inStableStraw && (
+                                <div className="flex justify-between">
+                                  <span>In Stable (Straw):</span>
+                                  <span className="font-medium">${selectedStable.longTermStay.inStableStrawPrice || 'N/A'}</span>
+                                </div>
+                              )}
+                              {selectedStable.longTermStay.inStableShavings && (
+                                <div className="flex justify-between">
+                                  <span>In Stable (Shavings):</span>
+                                  <span className="font-medium">${selectedStable.longTermStay.inStableShavingsPrice || 'N/A'}</span>
+                                </div>
+                              )}
+                              {selectedStable.longTermStay.inFieldAlone && (
+                                <div className="flex justify-between">
+                                  <span>In Field (Alone):</span>
+                                  <span className="font-medium">${selectedStable.longTermStay.inFieldAlonePrice || 'N/A'}</span>
+                                </div>
+                              )}
+                              {selectedStable.longTermStay.inFieldHerd && (
+                                <div className="flex justify-between">
+                                  <span>In Field (Herd):</span>
+                                  <span className="font-medium">${selectedStable.longTermStay.inFieldHerdPrice || 'N/A'}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stallions */}
+                  {selectedStable.stallionsAccepted && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-2">Stallions</h4>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="text-sm text-gray-700">Stallions Accepted</span>
+                        {selectedStable.stallionsPrice && (
+                          <span className="text-sm font-medium text-brand">${selectedStable.stallionsPrice}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Event Facilities */}
+                  {selectedStable.eventPricing && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-3">Event Facilities</h4>
+                      <div className="space-y-2">
+                        {selectedStable.eventPricing.eventingCourse && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-700">Eventing Course</span>
+                            <span className="text-sm font-medium text-brand">${selectedStable.eventPricing.eventingCoursePrice || 'N/A'}</span>
+                          </div>
+                        )}
+                        {selectedStable.eventPricing.canterTrack && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-700">Canter Track</span>
+                            <span className="text-sm font-medium text-brand">${selectedStable.eventPricing.canterTrackPrice || 'N/A'}</span>
+                          </div>
+                        )}
+                        {selectedStable.eventPricing.jumpingTrack && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-700">Jumping Track</span>
+                            <span className="text-sm font-medium text-brand">${selectedStable.eventPricing.jumpingTrackPrice || 'N/A'}</span>
+                          </div>
+                        )}
+                        {selectedStable.eventPricing.dressageTrack && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-700">Dressage Track</span>
+                            <span className="text-sm font-medium text-brand">${selectedStable.eventPricing.dressageTrackPrice || 'N/A'}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

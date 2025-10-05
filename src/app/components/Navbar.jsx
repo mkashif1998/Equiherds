@@ -3,8 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Home, Briefcase, Info, Phone, Newspaper, LogIn, Menu, X, User } from "lucide-react";
+import { Spin } from "antd";
+import { getUserData } from "../utils/localStorage";
 
 const baseNavItems = [
   { href: "/", label: "Home", Icon: Home },
@@ -18,8 +20,23 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const servicesRef = useRef(null);
   const pathname = usePathname();
+  const router = useRouter();
+  const userId = getUserData();
+  console.log("userId", userId);
+
+  // Helper function to validate URL and provide fallback
+  const getValidImageSrc = (imageUrl) => {
+    if (!imageUrl) return "/logo2.png";
+    try {
+      new URL(imageUrl);
+      return imageUrl;
+    } catch (_) {
+      return "/logo2.png";
+    }
+  };
 
   useEffect(() => {
     const checkToken = () => {
@@ -61,13 +78,47 @@ export default function Navbar() {
     };
   }, []);
 
+  // Handle navigation with loading state
+  const handleNavigation = (href, e) => {
+    e.preventDefault();
+    if (pathname === href) return; // Don't navigate if already on the same page
+    
+    setIsLoading(true);
+    setOpen(false); // Close mobile menu
+    
+    // Navigate immediately
+    router.push(href);
+  };
+
+  // Listen for route changes to hide loading
+  useEffect(() => {
+    const handleRouteChange = () => {
+      setIsLoading(false);
+    };
+
+    // Hide loading when pathname changes (route has loaded)
+    handleRouteChange();
+  }, [pathname]);
+
   return (
-    <header className="w-full border-b border-white/10 bg-primary sticky top-0 z-40">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-5 flex items-center justify-between">
+    <>
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center gap-4">
+            <Spin size="large" />
+            <p className="text-gray-700 font-medium">Loading...</p>
+          </div>
+        </div>
+      )}
+      
+      <header className="w-full border-b border-white/10 bg-primary sticky top-0 z-40">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link
             href="/"
             className="flex items-center"
+            onClick={(e) => handleNavigation("/", e)}
           >
             <Image src="/logo2.png" alt="Logo" width={120} height={120} />
           </Link>
@@ -106,10 +157,29 @@ export default function Navbar() {
                     onMouseEnter={() => setServicesOpen(true)}
                     onMouseLeave={() => setServicesOpen(false)}
                   >
-                    <Link href="/services?type=trainer" className="block px-4 py-2 text-white hover:bg-white/10" onClick={() => setServicesOpen(false)}>Trainer</Link>
-                    <Link href="/services?type=stables" className="block px-4 py-2 text-white hover:bg-white/10" onClick={() => setServicesOpen(false)}>Stables</Link>
+                    <Link href="/services?type=trainer" className="block px-4 py-2 text-white hover:bg-white/10" onClick={(e) => { setServicesOpen(false); handleNavigation("/services?type=trainer", e); }}>Trainer</Link>
+                    <Link href="/services?type=stables" className="block px-4 py-2 text-white hover:bg-white/10" onClick={(e) => { setServicesOpen(false); handleNavigation("/services?type=stables", e); }}>Stables</Link>
                   </div>
                 </div>
+              );
+            }
+            if (label === "Profile" && isAuthenticated && userId?.brandImage) {
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className="flex items-center"
+                  title="Profile"
+                  onClick={(e) => handleNavigation(href, e)}
+                >
+                  <Image 
+                    src={getValidImageSrc(userId.brandImage)} 
+                    alt="Profile" 
+                    width={32} 
+                    height={32} 
+                    className="rounded-full object-cover border-2 border-white/20 hover:border-white/40 transition-colors"
+                  />
+                </Link>
               );
             }
             return (
@@ -119,6 +189,7 @@ export default function Navbar() {
                 className={`flex items-center gap-2 underline-offset-4 ${
                   isActive ? "underline text-white" : "text-white hover:underline"
                 }`}
+                onClick={(e) => handleNavigation(href, e)}
               >
                 <Icon className="text-white" size={22} />
                 <span className="text-white font-bold">{label}</span>
@@ -140,7 +211,7 @@ export default function Navbar() {
           className={`absolute left-0 top-0 h-full w-[80vw] max-w-[22rem] bg-primary border-r border-white/10 shadow-xl transition-transform duration-300 ease-out ${open ? "translate-x-0" : "-translate-x-full"}`}
         >
           <div className="px-4 py-3 flex items-center justify-between border-b border-white/10">
-            <Link href="/" className="flex items-center gap-2 gap-2" onClick={() => setOpen(false)}>
+            <Link href="/" className="flex items-center gap-2 gap-2" onClick={(e) => { setOpen(false); handleNavigation("/", e); }}>
               <Image src="/logo2.png" alt="Logo" width={110} height={110} />
             </Link>
             <button aria-label="Close menu" className="p-2 rounded hover:bg-white/10 text-white" onClick={() => setOpen(false)}>
@@ -158,16 +229,36 @@ export default function Navbar() {
                       className={`flex items-center gap-3 ${
                         isActive ? "underline text-white" : "text-white hover:underline"
                       }`}
-                      onClick={() => setOpen(false)}
+                      onClick={(e) => { setOpen(false); handleNavigation(href, e); }}
                     >
                       <Icon className="text-white" size={20} />
                       <span className="text-white">{label}</span>
                     </Link>
                     <div className="ml-7 grid">
-                      <Link href="/services?type=trainer" className="px-2 py-1 text-white/90 hover:text-white" onClick={() => setOpen(false)}>Trainer</Link>
-                      <Link href="/services?type=stables" className="px-2 py-1 text-white/90 hover:text-white" onClick={() => setOpen(false)}>Stables</Link>
+                      <Link href="/services?type=trainer" className="px-2 py-1 text-white/90 hover:text-white" onClick={(e) => { setOpen(false); handleNavigation("/services?type=trainer", e); }}>Trainer</Link>
+                      <Link href="/services?type=stables" className="px-2 py-1 text-white/90 hover:text-white" onClick={(e) => { setOpen(false); handleNavigation("/services?type=stables", e); }}>Stables</Link>
                     </div>
                   </div>
+                );
+              }
+              if (label === "Profile" && isAuthenticated && userId?.brandImage) {
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="flex items-center gap-3"
+                    onClick={(e) => { setOpen(false); handleNavigation(href, e); }}
+                    title="Profile"
+                  >
+                    <Image 
+                      src={getValidImageSrc(userId.brandImage)} 
+                      alt="Profile" 
+                      width={28} 
+                      height={28} 
+                      className="rounded-full object-cover border-2 border-white/20"
+                    />
+                    <span className="text-white">{label}</span>
+                  </Link>
                 );
               }
               return (
@@ -177,7 +268,7 @@ export default function Navbar() {
                   className={`flex items-center gap-3 ${
                     isActive ? "underline text-white" : "text-white hover:underline"
                   }`}
-                  onClick={() => setOpen(false)}
+                  onClick={(e) => { setOpen(false); handleNavigation(href, e); }}
                 >
                   <Icon className="text-white" size={20} />
                   <span className="text-white">{label}</span>
@@ -188,5 +279,6 @@ export default function Navbar() {
         </div>
       </div>
     </header>
+    </>
   );
 }

@@ -4,9 +4,12 @@ import { useEffect, useState } from "react";
 import MyProfile from "./MyProfile";
 import Stables from "./Stables";
 import Subscription from "./Subscription";
+import SubscriptionList from "./SubscriptionList";
 import Training from "./Training";
 import MyServices from "./MyServices";
 import Client from "./Client";
+import SellersAccounts from "./SellersAccounts";
+import UsersManagement from "./UsersManagement";
 import { getUserData } from "../utils/localStorage";
 
 
@@ -32,7 +35,28 @@ export default function ProfilePage() {
     { key: "logout", label: "Logout" },
   ];
 
-  const tabs = (userData?.accountType === "seller") ? sellerTabs : buyerTabs;
+  const superAdminTabs = [
+    { key: "profile", label: "My Profile" },
+    { key: "subscription", label: "SubscriptionList" },
+    { key: "sellersAccounts", label: "Sellers Accounts" },
+    { key: "usersManagement", label: "Users Management" },
+    { key: "training", label: "Training" },
+    { key: "stables", label: "Stables" },
+    { key: "client", label: "Client" },
+    { key: "logout", label: "Logout" },
+  ];
+
+  const getTabs = () => {
+    if (userData?.accountType === "superAdmin") {
+      return superAdminTabs;
+    } else if (userData?.accountType === "seller") {
+      return sellerTabs;
+    } else {
+      return buyerTabs;
+    }
+  };
+
+  const tabs = getTabs();
   const handleLogout = () => {
     try {
       if (typeof window !== "undefined") {
@@ -68,7 +92,10 @@ export default function ProfilePage() {
 
         <section className="min-h-[320px] p-4 rounded border border-[color:var(--primary)] bg-white">
           {isMounted && activeTab === "profile" && <MyProfile />}
-          {isMounted && activeTab === "subscription" && <Subscription />}
+          {isMounted && activeTab === "subscription" && userData?.accountType === "superAdmin" && <SubscriptionList />}
+          {isMounted && activeTab === "subscription" && userData?.accountType !== "superAdmin" && <Subscription />}
+          {isMounted && activeTab === "sellersAccounts" && <SellersAccounts />}
+          {isMounted && activeTab === "usersManagement" && <UsersManagement />}
           {isMounted && activeTab === "training" && <Training />}
           {isMounted && activeTab === "stables" && <Stables />}
           {isMounted && activeTab === "myServices" && <MyServices />}

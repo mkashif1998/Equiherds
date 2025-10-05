@@ -152,7 +152,7 @@ export default function LoginPage() {
         accountType: mappedAccountType,
         phoneNumber: registrationData.phoneNumber,
         password: registrationData.password,
-        status: "active",
+        status: accountType === "Seller" ? "pending" : "active",
       };
 
       // Only add optional fields if they have values

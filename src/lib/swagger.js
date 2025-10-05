@@ -105,6 +105,28 @@ const options = {
             Slotes: { type: "array", items: { $ref: '#/components/schemas/Slot' } },
           },
         },
+        Subscription: {
+          type: "object",
+          properties: {
+            _id: { type: "string" },
+            name: { type: "string", example: "Premium Plan" },
+            price: { type: "number", example: 99.99 },
+            discount: { type: "number", example: 10, default: 0 },
+            duration: { type: "number", example: 30 },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
+        },
+        SubscriptionInput: {
+          type: "object",
+          required: ["name", "price", "duration"],
+          properties: {
+            name: { type: "string", example: "Premium Plan" },
+            price: { type: "number", example: 99.99 },
+            discount: { type: "number", example: 10, default: 0 },
+            duration: { type: "number", example: 30 },
+          },
+        },
       },
     },
   },

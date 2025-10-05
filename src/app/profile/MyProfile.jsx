@@ -38,7 +38,6 @@ export default function MyProfile() {
       }
       try {
         const res = await getRequest(`/api/users?id=${userId}`);
-        console.log("hhhhh");
         const user = res?.user || res;
         if (!ignore && user) {
           setFirstName(user.firstName || "");

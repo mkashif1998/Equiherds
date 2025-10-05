@@ -15,6 +15,13 @@
  *         schema:
  *           type: string
  *         description: If provided, returns a single user by id
+ *       - in: query
+ *         name: accountType
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [buyer, seller, superAdmin]
+ *         description: Filter users by account type
  *     responses:
  *       200:
  *         description: List of users
@@ -105,6 +112,14 @@
  *                 type: string
  *               companyInfo:
  *                 type: string
+ *               status:
+ *                 type: string
+ *                 enum: [active, inactive, suspended]
+ *               subscriptionStatus:
+ *                 type: string
+ *                 enum: [Active, Expired, Pending]
+ *               subscriptionExpiry:
+ *                 type: string
  *     responses:
  *       200:
  *         description: User updated
@@ -166,6 +181,8 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
+    const accountType = searchParams.get("accountType");
+    
     if (id) {
       const user = await User.findById(id).select("-password");
       if (!user) {
@@ -176,7 +193,14 @@ export async function GET(req) {
         { status: 200 }
       );
     }
-    const users = await User.find().select("-password");
+    
+    // Build query based on filters
+    let query = {};
+    if (accountType) {
+      query.accountType = accountType;
+    }
+    
+    const users = await User.find(query).select("-password");
     return NextResponse.json(
       { message: "Users fetched successfully", users },
       { status: 200 }
@@ -227,6 +251,9 @@ export async function PUT(req) {
       companyName,
       brandImage,
       companyInfo,
+      status,
+      subscriptionStatus,
+      subscriptionExpiry,
     } = body;
 
     const id = queryId || bodyId;
@@ -244,6 +271,9 @@ export async function PUT(req) {
     if (companyName !== undefined) updateData.companyName = companyName;
     if (brandImage !== undefined) updateData.brandImage = brandImage;
     if (companyInfo !== undefined) updateData.companyInfo = companyInfo;
+    if (status !== undefined) updateData.status = status;
+    if (subscriptionStatus !== undefined) updateData.subscriptionStatus = subscriptionStatus;
+    if (subscriptionExpiry !== undefined) updateData.subscriptionExpiry = subscriptionExpiry;
 
     const user = await User.findByIdAndUpdate(id, updateData, { new: true }).select("-password");
     return NextResponse.json(

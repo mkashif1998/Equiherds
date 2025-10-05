@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { Checkbox } from "antd";
 import { getRequest } from "@/service";
 
 export default function TrainerList() {
@@ -19,6 +20,11 @@ export default function TrainerList() {
   const [selectedTrainer, setSelectedTrainer] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // New filters
+  const [selectedDisciplines, setSelectedDisciplines] = useState([]);
+  const [trainingType, setTrainingType] = useState("");
+  const [competitionCoaching, setCompetitionCoaching] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +104,13 @@ export default function TrainerList() {
                     }))
                   : [],
                 status: d?.status || "active",
+                // New fields for filtering
+                disciplines: d?.disciplines || {},
+                training: d?.training || {},
+                competitionCoaching: d?.competitionCoaching || {},
+                diplomas: Array.isArray(d?.diplomas) ? d.diplomas : [],
+                location: d?.location || "",
+                coordinates: d?.coordinates || null,
               };
             })
           : [];
@@ -124,6 +137,9 @@ export default function TrainerList() {
     setMinRating(0);
     setSearch("");
     setSelectedDay("");
+    setSelectedDisciplines([]);
+    setTrainingType("");
+    setCompetitionCoaching(false);
   }, [items]);
 
   const filtered = useMemo(() => {
@@ -131,17 +147,33 @@ export default function TrainerList() {
     return items.filter((s) => {
       const matchesSearch = term
         ? (s.title || "").toLowerCase().includes(term) ||
-          (s.details || "").toLowerCase().includes(term)
+          (s.details || "").toLowerCase().includes(term) ||
+          (s.location || "").toLowerCase().includes(term)
         : true;
       const matchesRating = Number(s.rating || 0) >= minRating;
       const price = typeof s.price === "number" ? s.price : 0;
       const matchesPrice = price >= priceMin && price <= priceMax;
       const matchesDay = selectedDay
-        ? (s.schedule?.day || "").toLowerCase() === selectedDay.toLowerCase()
+        ? s.slots.some(slot => slot.date.toLowerCase() === selectedDay.toLowerCase())
         : true;
-      return matchesSearch && matchesRating && matchesPrice && matchesDay;
+      
+      // New filter logic
+      const matchesDisciplines = selectedDisciplines.length === 0 || selectedDisciplines.some(discipline => 
+        s.disciplines?.[discipline] === true
+      );
+      
+      const matchesTrainingType = !trainingType || (
+        trainingType === "onLocation" ? s.training?.onLocationLessons === true :
+        trainingType === "trainerLocation" ? s.training?.lessonsOnTrainersLocation === true :
+        true
+      );
+      
+      const matchesCompetitionCoaching = !competitionCoaching || s.competitionCoaching?.onLocationCoaching === true;
+      
+      return matchesSearch && matchesRating && matchesPrice && matchesDay && 
+             matchesDisciplines && matchesTrainingType && matchesCompetitionCoaching;
     });
-  }, [items, search, minRating, priceMin, priceMax, selectedDay]);
+  }, [items, search, minRating, priceMin, priceMax, selectedDay, selectedDisciplines, trainingType, competitionCoaching]);
 
   function handleReset() {
     const prices = items.map((s) => (typeof s.price === "number" ? s.price : 0));
@@ -152,6 +184,9 @@ export default function TrainerList() {
     setPriceMin(min);
     setPriceMax(max);
     setSelectedDay("");
+    setSelectedDisciplines([]);
+    setTrainingType("");
+    setCompetitionCoaching(false);
   }
 
   function handleTrainerClick(trainer) {
@@ -329,6 +364,51 @@ export default function TrainerList() {
                 />
               </div>
             </div>
+          </div>
+
+          <div className="mb-6">
+            <label htmlFor="training-type" className="mb-2 block text-sm font-medium text-gray-700">Training Type</label>
+            <select id="training-type" value={trainingType} onChange={(e) => setTrainingType(e.target.value)} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none ring-brand/20 transition focus:ring">
+              <option value="">All Training Types</option>
+              <option value="onLocation">On Location Lessons</option>
+              <option value="trainerLocation">Lessons at Trainer's Location</option>
+            </select>
+          </div>
+
+          <div className="mb-6">
+            <Checkbox
+              checked={competitionCoaching}
+              onChange={(e) => setCompetitionCoaching(e.target.checked)}
+              className="text-sm font-medium text-gray-700"
+            >
+              Competition Coaching Available
+            </Checkbox>
+          </div>
+
+          <div className="mb-4">
+            <label className="mb-2 block text-sm font-medium text-gray-700">Horse Disciplines</label>
+            <Checkbox.Group
+              value={selectedDisciplines}
+              onChange={(checkedValues) => setSelectedDisciplines(checkedValues)}
+              className="flex flex-col space-y-2"
+            >
+              {[
+                { key: 'dressage', label: 'Dressage' },
+                { key: 'showJumping', label: 'Show Jumping' },
+                { key: 'eventing', label: 'Eventing' },
+                { key: 'endurance', label: 'Endurance' },
+                { key: 'western', label: 'Western' },
+                { key: 'vaulting', label: 'Vaulting' }
+              ].map((discipline) => (
+                <Checkbox
+                  key={discipline.key}
+                  value={discipline.key}
+                  className="text-sm text-gray-700"
+                >
+                  {discipline.label}
+                </Checkbox>
+              ))}
+            </Checkbox.Group>
           </div>
         </div>
       </aside>
@@ -621,6 +701,91 @@ export default function TrainerList() {
                         </div>
                       </div>
                     )}
+
+                  {/* Disciplines */}
+                  {selectedTrainer.disciplines && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-3">Horse Disciplines</h4>
+                      <div className="space-y-2">
+                        {Object.entries(selectedTrainer.disciplines).map(([key, value]) => {
+                          if (key.includes('Price') || !value) return null;
+                          const priceKey = `${key}Price`;
+                          const price = selectedTrainer.disciplines[priceKey];
+                          return (
+                            <div key={key} className="flex justify-between items-center">
+                              <span className="text-sm text-gray-700 capitalize">
+                                {key.replace(/([A-Z])/g, ' $1').trim()}
+                              </span>
+                              {price && (
+                                <span className="text-sm font-medium text-brand">${price}</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Training Options */}
+                  {selectedTrainer.training && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-3">Training Options</h4>
+                      <div className="space-y-2">
+                        {selectedTrainer.training.onLocationLessons && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-700">On Location Lessons</span>
+                            {selectedTrainer.training.onLocationLessonsPrice && (
+                              <span className="text-sm font-medium text-brand">${selectedTrainer.training.onLocationLessonsPrice}</span>
+                            )}
+                          </div>
+                        )}
+                        {selectedTrainer.training.lessonsOnTrainersLocation && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-700">Lessons at Trainer's Location</span>
+                            {selectedTrainer.training.lessonsOnTrainersLocationPrice && (
+                              <span className="text-sm font-medium text-brand">${selectedTrainer.training.lessonsOnTrainersLocationPrice}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Competition Coaching */}
+                  {selectedTrainer.competitionCoaching?.onLocationCoaching && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-2">Competition Coaching</h4>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-700">On Location Coaching</span>
+                        {selectedTrainer.competitionCoaching.onLocationCoachingPrice && (
+                          <span className="text-sm font-medium text-brand">${selectedTrainer.competitionCoaching.onLocationCoachingPrice}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Diplomas */}
+                  {Array.isArray(selectedTrainer.diplomas) && selectedTrainer.diplomas.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-2">Diplomas & Certifications</h4>
+                      <div className="space-y-1">
+                        {selectedTrainer.diplomas.map((diploma, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-brand rounded-full"></div>
+                            <span className="text-sm text-gray-700">{diploma}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Location */}
+                  {selectedTrainer.location && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-2">Location</h4>
+                      <p className="text-gray-600 text-sm">{selectedTrainer.location}</p>
+                    </div>
+                  )}
 
                   <div className="pt-4 border-t border-gray-200">
                     <div className="flex flex-col gap-3">

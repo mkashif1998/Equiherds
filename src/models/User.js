@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema({
   companyName: { type: String },
   brandImage: { type: String }, 
   companyInfo: { type: String },
+  subscriptionId: { type: mongoose.Schema.Types.ObjectId, ref: "Subscription", required: false },
   subscriptionStatus: { type: String, required:  false },
   subscriptionExpiry: { type: String, required:  false },
   Details: { type: String, required:  false },
