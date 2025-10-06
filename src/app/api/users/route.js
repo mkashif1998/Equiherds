@@ -120,6 +120,28 @@
  *                 enum: [Active, Expired, Pending]
  *               subscriptionExpiry:
  *                 type: string
+ *               payments:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     paymentId:
+ *                       type: string
+ *                     date:
+ *                       type: string
+ *                       format: date-time
+ *                     amount:
+ *                       type: number
+ *                     currency:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                     subscriptionId:
+ *                       type: string
+ *                     subscriptionStatus:
+ *                       type: string
+ *                     subscriptionExpiry:
+ *                       type: string
  *     responses:
  *       200:
  *         description: User updated
@@ -254,6 +276,7 @@ export async function PUT(req) {
       status,
       subscriptionStatus,
       subscriptionExpiry,
+      payments,
     } = body;
 
     const id = queryId || bodyId;
@@ -274,6 +297,7 @@ export async function PUT(req) {
     if (status !== undefined) updateData.status = status;
     if (subscriptionStatus !== undefined) updateData.subscriptionStatus = subscriptionStatus;
     if (subscriptionExpiry !== undefined) updateData.subscriptionExpiry = subscriptionExpiry;
+    if (payments !== undefined) updateData.payments = payments;
 
     const user = await User.findByIdAndUpdate(id, updateData, { new: true }).select("-password");
     return NextResponse.json(

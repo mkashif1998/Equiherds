@@ -2,7 +2,19 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import IMask from "imask";
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { toast } from "react-hot-toast";
 import { images } from "../const/images";
+import { getUserData } from "../utils/localStorage";
+import { postRequest, getRequest } from "../../service/index";
+import { 
+    getSubscriptionDisplayInfo, 
+    calculateNewExpiryDate, 
+    shouldShowRenewalPrompt,
+    formatDate,
+    SUBSCRIPTION_STATES 
+} from "../utils/subscriptionUtils";
 
 const dummyHistory = [
     { month: "January", year: 2024, price: 1200, status: "Paid" },
@@ -12,16 +24,227 @@ const dummyHistory = [
     { month: "May", year: 2024, price: 1200, status: "Pending" },
 ];
 
+// Stripe Elements Payment Form Component
+function PaymentForm({ name, setName, flipped, setFlipped, subscriptionInfo, userData }) {
+    const stripe = useStripe();
+    const elements = useElements();
+    const [isProcessing, setIsProcessing] = useState(false);
+
+    const handlePayment = async (e) => {
+        e.preventDefault();
+        
+        if (!stripe || !elements) {
+            console.error('Stripe not initialized');
+            return;
+        }
+
+        if (!name.trim()) {
+            console.error('Please enter cardholder name');
+            toast.error('Please enter cardholder name');
+            return;
+        }
+
+        setIsProcessing(true);
+        console.log('Starting payment process with Stripe Elements...');
+
+        try {
+            // Get smart payment amount based on subscription status
+            const paymentAmount = subscriptionInfo?.paymentAmount || 1200;
+            const currency = subscriptionInfo?.currency || 'eur';
+            
+            // Create payment intent
+            const response = await fetch('/api/create-payment-intent', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    amount: paymentAmount,
+                    currency: currency
+                }),
+            });
+
+            const { clientSecret, paymentIntentId } = await response.json();
+            console.log('Payment intent created:', paymentIntentId);
+
+            // Get the card element
+            const cardElement = elements.getElement(CardElement);
+
+            // Confirm payment with Stripe Elements
+            const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+                payment_method: {
+                    card: cardElement,
+                    billing_details: {
+                        name: name,
+                    },
+                },
+            });
+
+            if (error) {
+                console.error('Payment failed:', error);
+                toast.error(`Payment failed: ${error.message}`);
+            } else if (paymentIntent.status === 'succeeded') {
+                console.log('Payment succeeded:', paymentIntent);
+                
+                // Save payment record to user account
+                try {
+                    const localUserData = getUserData();
+                    if (localUserData && localUserData.id) {
+                        // Calculate smart expiry date based on current subscription status
+                        const newExpiryDate = calculateNewExpiryDate(userData);
+                        
+                        const paymentData = {
+                            userId: localUserData.id,
+                            paymentId: paymentIntent.id,
+                            amount: paymentAmount,
+                            currency: currency,
+                            status: 'succeeded',
+                            subscriptionId: null, // Can be set if you have subscription logic
+                            subscriptionStatus: 'Active',
+                            subscriptionExpiry: newExpiryDate.toISOString()
+                        };
+
+                        const paymentResponse = await postRequest('/api/users/payments', paymentData);
+
+                        if (paymentResponse && paymentResponse.user) {
+                            toast.success('Payment successful! Your subscription has been activated and payment recorded.');
+                            // Refresh payment data
+                            fetchUserPayments();
+                        } else {
+                            toast.success('Payment successful! Your subscription has been activated.');
+                            console.warn('Failed to record payment in user account');
+                        }
+                    } else {
+                        toast.success('Payment successful! Your subscription has been activated.');
+                        console.warn('User data not found, payment not recorded');
+                    }
+                } catch (recordError) {
+                    console.error('Error recording payment:', recordError);
+                    toast.success('Payment successful! Your subscription has been activated.');
+                }
+            }
+        } catch (err) {
+            console.error('Payment error:', err);
+            toast.error('An error occurred during payment. Please try again.');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    return (
+        <form className="space-y-4" onSubmit={handlePayment}>
+            <div>
+                <label className="block text-sm font-medium text-brand mb-1">Cardholder Name</label>
+                <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value.toUpperCase())}
+                    onFocus={() => setFlipped(false)}
+                    className="w-full border border-[color:var(--primary)] rounded px-3 py-2 text-sm focus:outline-none"
+                    placeholder="JOHN DOE"
+                    autoComplete="cc-name"
+                />
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-brand mb-1">Card Details</label>
+                <div className="border border-[color:var(--primary)] rounded px-3 py-2">
+                    <CardElement
+                        options={{
+                            hidePostalCode: true,
+                            style: {
+                                base: {
+                                    fontSize: '14px',
+                                    color: '#424770',
+                                    '::placeholder': {
+                                        color: '#aab7c4',
+                                    },
+                                },
+                                invalid: {
+                                    color: '#9e2146',
+                                },
+                            },
+                        }}
+                        onFocus={() => setFlipped(false)}
+                        onBlur={() => setFlipped(false)}
+                    />
+                </div>
+            </div>
+            <button
+                type="submit"
+                disabled={isProcessing || !stripe}
+                className={`px-4 py-2 rounded bg-[color:var(--primary)] !text-white font-medium ${
+                    isProcessing || !stripe ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+            >
+                {isProcessing ? 'Processing...' : `Pay ${subscriptionInfo?.formattedAmount || '€12.00'}`}
+            </button>
+        </form>
+    );
+}
+
 export default function Subscription() {
     const [name, setName] = useState("");
     const [number, setNumber] = useState("");
     const [expiry, setExpiry] = useState("");
     const [cvc, setCvc] = useState("");
     const [flipped, setFlipped] = useState(false);
+    const [stripePromise, setStripePromise] = useState(null);
+    const [userPayments, setUserPayments] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [userData, setUserData] = useState(null);
+    const [subscriptionInfo, setSubscriptionInfo] = useState(null);
 
     const numberRef = useRef(null);
     const expiryRef = useRef(null);
     const cvcRef = useRef(null);
+
+    // Fetch user payment data and subscription info
+    const fetchUserPayments = async () => {
+        try {
+            const localUserData = getUserData();
+            if (localUserData && localUserData.id) {
+                const response = await getRequest(`/api/users?id=${localUserData.id}`);
+                if (response && response.user) {
+                    const user = response.user;
+                    setUserData(user);
+                    setUserPayments(user.payments || []);
+                    
+                    // Calculate subscription info
+                    const subInfo = getSubscriptionDisplayInfo(user);
+                    setSubscriptionInfo(subInfo);
+                    
+                    // Show renewal prompt if needed
+                    if (shouldShowRenewalPrompt(user)) {
+                        if (subInfo.isExpired) {
+                            toast.error(`Your subscription expired ${subInfo.daysOverdue} days ago. Please renew to continue.`);
+                        } else if (subInfo.daysRemaining <= 3) {
+                            toast.warning(`Your subscription expires in ${subInfo.daysRemaining} days. Consider renewing now.`);
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching user payments:', error);
+            toast.error('Failed to load payment history');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Fetch user payments on component mount
+    useEffect(() => {
+        fetchUserPayments();
+    }, []);
+
+    // Initialize Stripe
+    useEffect(() => {
+        const initializeStripe = async () => {
+            const stripeInstance = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+            setStripePromise(stripeInstance);
+            console.log('Stripe initialized:', stripeInstance ? 'Success' : 'Failed');
+        };
+        initializeStripe();
+    }, []);
 
     // Input masks
     useEffect(() => {
@@ -77,9 +300,80 @@ export default function Subscription() {
     const formattedExpiry = useMemo(() => (expiry || "01/23"), [expiry]);
     const formattedCvc = useMemo(() => (cvc || "985"), [cvc]);
 
+    // Format payment data for display
+    const formatPaymentData = (payments) => {
+        return payments.map(payment => {
+            const date = new Date(payment.date);
+            return {
+                month: date.toLocaleString('default', { month: 'long' }),
+                year: date.getFullYear(),
+                price: payment.amount,
+                status: payment.status === 'succeeded' ? 'Paid' : 'Pending',
+                date: payment.date,
+                paymentId: payment.paymentId,
+                currency: payment.currency
+            };
+        }).sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date, newest first
+    };
+
+
     return (
         <div className="space-y-6">
             <h2 className="text-2xl font-semibold text-brand">Subscription</h2>
+            
+            {/* Subscription Status Dashboard */}
+            {subscriptionInfo && (
+                <div className="bg-white rounded-lg border border-[color:var(--primary)]/20 p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-brand">Subscription Status</h3>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            subscriptionInfo.status === SUBSCRIPTION_STATES.ACTIVE 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-red-100 text-red-700'
+                        }`}>
+                            {subscriptionInfo.status === SUBSCRIPTION_STATES.ACTIVE ? 'Active' : 'Expired'}
+                        </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <p className="text-sm text-gray-600 mb-1">Status Message</p>
+                            <p className="font-medium text-brand">{subscriptionInfo.message}</p>
+                        </div>
+                        
+                        {subscriptionInfo.status === SUBSCRIPTION_STATES.ACTIVE ? (
+                            <div>
+                                <p className="text-sm text-gray-600 mb-1">Days Remaining</p>
+                                <p className="font-medium text-green-600">{subscriptionInfo.daysRemaining} days</p>
+                            </div>
+                        ) : (
+                            <div>
+                                <p className="text-sm text-gray-600 mb-1">Days Overdue</p>
+                                <p className="font-medium text-red-600">{subscriptionInfo.daysOverdue} days</p>
+                            </div>
+                        )}
+                        
+                        {subscriptionInfo.expiryDate && (
+                            <div>
+                                <p className="text-sm text-gray-600 mb-1">Expiry Date</p>
+                                <p className="font-medium text-brand">{formatDate(subscriptionInfo.expiryDate)}</p>
+                            </div>
+                        )}
+                        
+                        <div>
+                            <p className="text-sm text-gray-600 mb-1">Next Payment</p>
+                            <p className="font-medium text-brand">{subscriptionInfo.formattedAmount}</p>
+                        </div>
+                    </div>
+                    
+                    {subscriptionInfo.paymentDescription && (
+                        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                            <p className="text-sm text-blue-700">{subscriptionInfo.paymentDescription}</p>
+                        </div>
+                    )}
+                </div>
+            )}
+            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                 {/* Card Preview */}
                 <div className="relative h-56 w-[360px] sm:w-[400px] mx-auto [perspective:1000px]">
@@ -130,72 +424,19 @@ export default function Subscription() {
                     </div>
                 </div>
 
-                {/* Form */}
-                <form
-                    className="space-y-4"
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                    }}
-                >
-                    <div>
-                        <label className="block text-sm font-medium text-brand mb-1">Name</label>
-                        <input
-                            id="name"
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value.toUpperCase())}
-                            onFocus={() => setFlipped(false)}
-                            className="w-full border border-[color:var(--primary)] rounded px-3 py-2 text-sm focus:outline-none "
-                            placeholder="JOHN DOE"
-                            autoComplete="cc-name"
+                {/* Stripe Elements Form */}
+                {stripePromise && (
+                    <Elements stripe={stripePromise}>
+                        <PaymentForm 
+                            name={name} 
+                            setName={setName} 
+                            flipped={flipped} 
+                            setFlipped={setFlipped}
+                            subscriptionInfo={subscriptionInfo}
+                            userData={userData}
                         />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-brand mb-1">Card Number</label>
-                        <input
-                            id="cardnumber"
-                            ref={numberRef}
-                            inputMode="numeric"
-                            onFocus={() => setFlipped(false)}
-                            className="w-full border border-[color:var(--primary)] rounded px-3 py-2 text-sm focus:outline-none "
-                            placeholder="0123 4567 8910 1112"
-                            autoComplete="cc-number"
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-brand mb-1">Expiration (mm/yy)</label>
-                            <input
-                                id="expirationdate"
-                                ref={expiryRef}
-                                inputMode="numeric"
-                                onFocus={() => setFlipped(false)}
-                                className="w-full border border-[color:var(--primary)] rounded px-3 py-2 text-sm focus:outline-none "
-                                placeholder="01/23"
-                                autoComplete="cc-exp"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-brand mb-1">Security Code</label>
-                            <input
-                                id="securitycode"
-                                ref={cvcRef}
-                                inputMode="numeric"
-                                onFocus={() => setFlipped(true)}
-                                onBlur={() => setFlipped(false)}
-                                className="w-full border border-[color:var(--primary)] rounded px-3 py-2 text-sm focus:outline-none "
-                                placeholder="985"
-                                autoComplete="cc-csc"
-                            />
-                        </div>
-                    </div>
-                    <button
-                        type="submit"
-                        className="px-4 py-2 rounded bg-[color:var(--primary)] !text-white font-medium "
-                    >
-                        Pay Now
-                    </button>
-                </form>
+                    </Elements>
+                )}
             </div>
 
             {/* Payment History Table */}
@@ -210,27 +451,45 @@ export default function Subscription() {
                                     <th className="px-4 py-2 border-b text-left text-brand/80 font-medium">Year</th>
                                     <th className="px-4 py-2 border-b text-left text-brand/80 font-medium">Price</th>
                                     <th className="px-4 py-2 border-b text-left text-brand/80 font-medium">Status</th>
+                                    <th className="px-4 py-2 border-b text-left text-brand/80 font-medium">Payment ID</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {dummyHistory.map((c, idx) => (
-                                    <tr key={c.month + c.year} className="border-t border-[color:var(--primary)]/20">
-                                        <td className="px-4 py-3 whitespace-nowrap">{c.month}</td>
-                                        <td className="px-4 py-3 whitespace-nowrap">{c.year}</td>
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            {"$" + c.price.toLocaleString("en-US", { minimumFractionDigits: 0 })}
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                                c.status === "Paid"
-                                                    ? "bg-green-100 text-green-700"
-                                                    : "bg-yellow-100 text-yellow-700"
-                                            }`}>
-                                                {c.status}
-                                            </span>
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
+                                            Loading payment history...
                                         </td>
                                     </tr>
-                                ))}
+                                ) : userPayments.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
+                                            No payment history found
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    formatPaymentData(userPayments).map((payment, idx) => (
+                                        <tr key={payment.paymentId} className="border-t border-[color:var(--primary)]/20">
+                                            <td className="px-4 py-3 whitespace-nowrap">{payment.month}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap">{payment.year}</td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                {payment.currency === 'eur' ? '€' : '$'}{(payment.price / 100).toFixed(2)}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                                    payment.status === "Paid"
+                                                        ? "bg-green-100 text-green-700"
+                                                        : "bg-yellow-100 text-yellow-700"
+                                                }`}>
+                                                    {payment.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
+                                                {payment.paymentId}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>

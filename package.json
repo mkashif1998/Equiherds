@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^5.0.0",
     "antd": "^5.27.4",
     "bcryptjs": "^3.0.2",
     "dayjs": "^1.11.18",

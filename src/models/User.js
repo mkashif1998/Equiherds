@@ -1,6 +1,17 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
+const paymentSchema = new mongoose.Schema({
+  paymentId: { type: String, required: true },
+  date: { type: Date, required: true },
+  amount: { type: Number, required: true },
+  currency: { type: String, required: true },
+  status: { type: String, required: true },
+  subscriptionId: { type: mongoose.Schema.Types.ObjectId, ref: "Subscription", required: false },
+  subscriptionStatus: { type: String, required:  false },
+  subscriptionExpiry: { type: String, required:  false },
+}, { _id: false });
+
 const userSchema = new mongoose.Schema({
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
@@ -15,12 +26,10 @@ const userSchema = new mongoose.Schema({
   companyName: { type: String },
   brandImage: { type: String }, 
   companyInfo: { type: String },
-  subscriptionId: { type: mongoose.Schema.Types.ObjectId, ref: "Subscription", required: false },
-  subscriptionStatus: { type: String, required:  false },
-  subscriptionExpiry: { type: String, required:  false },
   Details: { type: String, required:  false },
   profilePicture: { type: String, required:  false },
   status: { type: String, required: true },
+  payments: { type: [paymentSchema], default: [] } // Add payments array of JSON objects
 }, {
   timestamps: true 
 });
