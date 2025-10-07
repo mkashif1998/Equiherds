@@ -385,12 +385,6 @@ export async function POST(req) {
       );
     }
 
-    if (end && end <= start) {
-      return NextResponse.json(
-        { success: false, message: "End date must be after start date" },
-        { status: 400 }
-      );
-    }
 
     // Validate numberOfHorses (only for stable bookings)
     if (!isTrainerBooking && numberOfHorses < 1) {

@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import TopSection from "../components/topSection";
+import BookingPaymentModal from "../components/BookingPaymentModal";
 import { postRequest, getRequest } from "@/service";
 import { getUserData } from "../utils/localStorage";
 
@@ -24,6 +25,8 @@ function BookingTrainerContent() {
   const [selectedTrainer, setSelectedTrainer] = useState(null);
   const [bookingType, setBookingType] = useState(null); // 'week' or 'month'
   const [selectedDateRange, setSelectedDateRange] = useState(null);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [bookingData, setBookingData] = useState(null);
   const [selectedServices, setSelectedServices] = useState({
     disciplines: {
       dressage: false,
@@ -270,7 +273,7 @@ function BookingTrainerContent() {
     return hourlyRate;
   };
 
-  // Handle form submission
+  // Handle form submission - show payment modal
   const handleSubmit = async (values) => {
     // Validate required fields
     if (!bookingType || !selectedDateRange) {
@@ -293,14 +296,14 @@ function BookingTrainerContent() {
       return;
     }
 
-    setLoading(true);
     try {
       const servicePriceDetails = getServicePriceDetails();
       
-      const bookingData = {
+      const bookingPayload = {
         userId: selectedTrainer?.userId?._id || selectedTrainer?.userId,
         clientId: userData.id,
         trainerId: selectedTrainer?._id,
+        trainerTitle: selectedTrainer?.title,
         bookingDate: dayjs().format('YYYY-MM-DD'),
         bookingType: bookingType,
         startDate: selectedDateRange[0].format('YYYY-MM-DD'),
@@ -314,53 +317,51 @@ function BookingTrainerContent() {
         price: getPricePerUnit() // Legacy field for backward compatibility
       };
       
-      console.log('Sending booking data:', bookingData);
+      console.log('Preparing booking data for payment:', bookingPayload);
       
-      const result = await postRequest('/api/bookingTrainers', bookingData);
-
-      if (result.success) {
-        notification.success({
-          message: 'Booking Successful',
-          description: 'Booking created successfully!',
-          placement: 'topRight',
-        });
-        form.resetFields();
-        setBookingType(null);
-        setSelectedDateRange(null);
-        setSelectedServices({
-          disciplines: {
-            dressage: false,
-            showJumping: false,
-            eventing: false,
-            endurance: false,
-            western: false,
-            vaulting: false
-          },
-          training: {
-            onLocationLessons: false,
-            lessonsOnTrainersLocation: false
-          },
-          competitionCoaching: {
-            onLocationCoaching: false
-          }
-        });
-      } else {
-        notification.error({
-          message: 'Booking Failed',
-          description: result.message || 'Failed to create booking',
-          placement: 'topRight',
-        });
-      }
+      // Set booking data and show payment modal
+      setBookingData(bookingPayload);
+      setPaymentModalVisible(true);
+      
     } catch (error) {
-      console.error('Booking error:', error);
+      console.error('Error preparing booking:', error);
       notification.error({
-        message: 'Request Failed',
-        description: 'Failed to submit booking request',
+        message: 'Error',
+        description: 'Failed to prepare booking data',
         placement: 'topRight',
       });
-    } finally {
-      setLoading(false);
     }
+  };
+
+  // Handle successful booking after payment
+  const handleBookingSuccess = (bookingResponse, paymentIntent) => {
+    notification.success({
+      message: 'Booking Successful',
+      description: 'Your training session has been confirmed and payment processed!',
+      placement: 'topRight',
+    });
+    
+    // Reset form
+    form.resetFields();
+    setBookingType(null);
+    setSelectedDateRange(null);
+    setSelectedServices({
+      disciplines: {
+        dressage: false,
+        showJumping: false,
+        eventing: false,
+        endurance: false,
+        western: false,
+        vaulting: false
+      },
+      training: {
+        onLocationLessons: false,
+        lessonsOnTrainersLocation: false
+      },
+      competitionCoaching: {
+        onLocationCoaching: false
+      }
+    });
   };
 
   return (
@@ -776,11 +777,10 @@ function BookingTrainerContent() {
                     type="primary"
                     htmlType="submit"
                     size="large"
-                    loading={loading}
                     className="w-full mt-4"
                     disabled={!bookingType || !selectedDateRange}
                   >
-                    Book Training Session (${calculateTotalPrice().toFixed(2)})
+                    Proceed to Payment (€{calculateTotalPrice().toFixed(2)})
                   </Button>
                 </Form.Item>
               </Form>
@@ -788,6 +788,14 @@ function BookingTrainerContent() {
           </Col>
         </Row>
         </section>
+        
+        {/* Payment Modal */}
+        <BookingPaymentModal
+          visible={paymentModalVisible}
+          onCancel={() => setPaymentModalVisible(false)}
+          bookingData={bookingData}
+          onBookingSuccess={handleBookingSuccess}
+        />
       </div>
   );
 }

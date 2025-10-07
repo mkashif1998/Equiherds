@@ -37,7 +37,7 @@ export default function ProfilePage() {
 
   const superAdminTabs = [
     { key: "profile", label: "My Profile" },
-    { key: "subscription", label: "SubscriptionList" },
+    { key: "subscription", label: "Subscription" },
     { key: "sellersAccounts", label: "Sellers Accounts" },
     { key: "usersManagement", label: "Users Management" },
     { key: "training", label: "Training" },

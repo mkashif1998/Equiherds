@@ -102,9 +102,116 @@ export default function SubscriptionList() {
     );
   }
 
+  // Subscription plans data
+  const subscriptionPlans = [
+    {
+      id: 1,
+      name: "Basic",
+      price: 600,
+      period: "year",
+      description: "Perfect for individual horse owners",
+      features: [
+        "Basic stable listing",
+        "Up to 5 horses",
+        "Standard support",
+        "Basic analytics",
+        "Email notifications"
+      ],
+      color: "border-blue-200 bg-blue-50",
+      buttonColor: "bg-blue-600 hover:bg-blue-700",
+      popular: false
+    },
+    {
+      id: 2,
+      name: "Standard",
+      price: 900,
+      period: "year",
+      description: "Ideal for small horse businesses",
+      features: [
+        "Enhanced stable listing",
+        "Up to 15 horses",
+        "Priority support",
+        "Advanced analytics",
+        "SMS notifications",
+        "Custom branding",
+        "Booking management"
+      ],
+      color: "border-green-200 bg-green-50",
+      buttonColor: "bg-green-600 hover:bg-green-700",
+      popular: true
+    },
+    {
+      id: 3,
+      name: "Premium",
+      price: 1200,
+      period: "year",
+      description: "Complete solution for large operations",
+      features: [
+        "Premium stable listing",
+        "Unlimited horses",
+        "24/7 premium support",
+        "Advanced analytics & reports",
+        "Multi-channel notifications",
+        "Full customization",
+        "Advanced booking system",
+        "API access",
+        "White-label options"
+      ],
+      color: "border-purple-200 bg-purple-50",
+      buttonColor: "bg-purple-600 hover:bg-purple-700",
+      popular: false
+    }
+  ];
+
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-brand">Subscription List</h2>
+    <div className="space-y-8">
+      <h2 className="text-2xl font-semibold text-brand">Subscription Plans</h2>
+      
+      {/* Subscription Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {subscriptionPlans.map((plan) => (
+          <div
+            key={plan.id}
+            className={`relative rounded-lg border-2 p-6 transition-all duration-300 hover:shadow-lg ${
+              plan.popular ? 'ring-2 ring-green-500 ring-opacity-50 scale-105' : ''
+            } ${plan.color}`}
+          >
+            {plan.popular && (
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium">
+                  Most Popular
+                </span>
+              </div>
+            )}
+            
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
+              <div className="mb-2">
+                <span className="text-3xl font-bold text-gray-900">${plan.price}</span>
+                <span className="text-gray-600">/{plan.period}</span>
+              </div>
+              <p className="text-gray-600 text-sm">{plan.description}</p>
+            </div>
+            
+            <ul className="space-y-3 mb-6">
+              {plan.features.map((feature, index) => (
+                <li key={index} className="flex items-start">
+                  <svg className="w-5 h-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-gray-700 text-sm">{feature}</span>
+                </li>
+              ))}
+            </ul>
+            
+            <button className={`w-full py-2 px-4 rounded-lg text-white font-medium transition-colors duration-200 ${plan.buttonColor}`}>
+              Choose {plan.name}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <h2 className="text-2xl font-semibold text-brand">Current Subscriptions</h2>
       
       <div className="rounded border border-[color:var(--primary)] overflow-hidden">
         <div className="overflow-x-auto">

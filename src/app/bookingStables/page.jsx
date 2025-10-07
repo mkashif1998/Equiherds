@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import TopSection from "../components/topSection";
+import BookingPaymentModal from "../components/BookingPaymentModal";
 import { postRequest, getRequest } from "@/service";
 import { getUserData } from "../utils/localStorage";
 
@@ -24,9 +25,12 @@ function BookingStablesContent() {
   const [selectedStable, setSelectedStable] = useState(null);
   const [bookingType, setBookingType] = useState(null); // 'day' or 'week'
   const [selectedDateRange, setSelectedDateRange] = useState(null);
+  const [selectedSingleDate, setSelectedSingleDate] = useState(null);
   const [bookingAvailability, setBookingAvailability] = useState([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityError, setAvailabilityError] = useState(null);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [bookingData, setBookingData] = useState(null);
   const [selectedServices, setSelectedServices] = useState({
     shortTermStay: {
       selected: null
@@ -165,14 +169,26 @@ function BookingStablesContent() {
   const handleBookingTypeChange = (type) => {
     setBookingType(type);
     setSelectedDateRange(null);
+    setSelectedSingleDate(null);
   };
 
-  // Handle date range selection
+  // Handle date range selection (for week bookings)
   const handleDateRangeChange = (dates) => {
     setSelectedDateRange(dates);
     // Fetch availability for the selected date range (with 15 days buffer)
     if (dates && dates.length === 2 && selectedStable?.stableId) {
       fetchBookingAvailability(selectedStable.stableId, dates);
+    }
+  };
+
+  // Handle single date selection (for day bookings)
+  const handleSingleDateChange = (date) => {
+    setSelectedSingleDate(date);
+    // Fetch availability for the selected single date (with 15 days buffer)
+    if (date && selectedStable?.stableId) {
+      // Create a date range with the single date for availability checking
+      const dateRange = [date, date];
+      fetchBookingAvailability(selectedStable.stableId, dateRange);
     }
   };
 
@@ -209,13 +225,17 @@ function BookingStablesContent() {
 
   // Calculate number of days in booking
   const getNumberOfDays = () => {
-    if (!selectedDateRange || selectedDateRange.length !== 2) return 0;
-    return selectedDateRange[1].diff(selectedDateRange[0], 'day') + 1;
+    if (bookingType === 'day' && selectedSingleDate) {
+      return 1; // Single day booking
+    } else if (bookingType === 'week' && selectedDateRange && selectedDateRange.length === 2) {
+      return selectedDateRange[1].diff(selectedDateRange[0], 'day') + 1;
+    }
+    return 0;
   };
 
   // Calculate additional service costs
   const getAdditionalServiceCosts = () => {
-    if (!selectedStable || !selectedDateRange) return 0;
+    if (!selectedStable || (!selectedDateRange && !selectedSingleDate)) return 0;
     
     const numberOfDays = getNumberOfDays();
     let totalAdditionalCost = 0;
@@ -341,7 +361,7 @@ function BookingStablesContent() {
 
   // Calculate service price details
   const getServicePriceDetails = () => {
-    if (!selectedStable || !selectedDateRange) return {};
+    if (!selectedStable || (!selectedDateRange && !selectedSingleDate)) return {};
     
     const numberOfDays = getNumberOfDays();
     const priceDetails = {
@@ -434,13 +454,16 @@ function BookingStablesContent() {
     return priceDetails;
   };
 
-  // Handle form submission
+  // Handle form submission - show payment modal
   const handleSubmit = async (values) => {
     // Validate required fields
-    if (!bookingType || !selectedDateRange) {
+    const hasValidDate = (bookingType === 'day' && selectedSingleDate) || 
+                        (bookingType === 'week' && selectedDateRange && selectedDateRange.length === 2);
+    
+    if (!bookingType || !hasValidDate) {
       notification.error({
         message: 'Validation Error',
-        description: 'Please select booking type and date range',
+        description: 'Please select booking type and date',
         placement: 'topRight',
       });
       return;
@@ -457,7 +480,6 @@ function BookingStablesContent() {
       return;
     }
 
-    setLoading(true);
     try {
       const servicePriceDetails = getServicePriceDetails();
       
@@ -469,13 +491,25 @@ function BookingStablesContent() {
         eventPricing: selectedServices.eventPricing
       };
 
-      const bookingData = {
+      // Determine start and end dates based on booking type
+      let startDate, endDate;
+      if (bookingType === 'day' && selectedSingleDate) {
+        // For day bookings, start and end date are the same
+        startDate = selectedSingleDate.format('YYYY-MM-DD');
+        endDate = selectedSingleDate.format('YYYY-MM-DD');
+      } else if (bookingType === 'week' && selectedDateRange && selectedDateRange.length === 2) {
+        startDate = selectedDateRange[0].format('YYYY-MM-DD');
+        endDate = selectedDateRange[1].format('YYYY-MM-DD');
+      }
+
+      const bookingPayload = {
         clientId: userData.id,
         userId: selectedStable?.userId?._id || selectedStable?.userId,
         stableId: selectedStable?.stableId,
+        stableTitle: selectedStable?.title,
         bookingType: bookingType,
-        startDate: selectedDateRange[0].format('YYYY-MM-DD'),
-        endDate: selectedDateRange[1].format('YYYY-MM-DD'),
+        startDate: startDate,
+        endDate: endDate,
         numberOfHorses: values.horseCount,
         basePrice: getBaseBookingPrice(),
         additionalServices: fixedAdditionalServices,
@@ -485,56 +519,54 @@ function BookingStablesContent() {
         numberOfDays: getNumberOfDays()
       };
       
-      console.log('Sending booking data:', bookingData);
-      console.log('Selected services:', selectedServices);
-      console.log('Fixed additional services:', fixedAdditionalServices);
+      console.log('Preparing booking data for payment:', bookingPayload);
       
-      const result = await postRequest('/api/bookingStables', bookingData);
-
-      if (result.success) {
-        notification.success({
-          message: 'Booking Successful',
-          description: 'Booking created successfully!',
-          placement: 'topRight',
-        });
-        form.resetFields();
-        setBookingType(null);
-        setSelectedDateRange(null);
-        setSelectedServices({
-          shortTermStay: {
-            selected: null
-          },
-          longTermStay: {
-            selected: null
-          },
-          stallionsAccepted: false,
-          eventPricing: {
-            eventingCourse: false,
-            canterTrack: false,
-            jumpingTrack: false,
-            dressageTrack: false
-          }
-        });
-        // Refresh availability data to show the new booking
-        if (selectedStable?.stableId) {
-          fetchBookingAvailability(selectedStable.stableId, selectedDateRange);
-        }
-      } else {
-        notification.error({
-          message: 'Booking Failed',
-          description: result.message || 'Failed to create booking',
-          placement: 'topRight',
-        });
-      }
+      // Set booking data and show payment modal
+      setBookingData(bookingPayload);
+      setPaymentModalVisible(true);
+      
     } catch (error) {
-      console.error('Booking error:', error);
+      console.error('Error preparing booking:', error);
       notification.error({
-        message: 'Request Failed',
-        description: 'Failed to submit booking request',
+        message: 'Error',
+        description: 'Failed to prepare booking data',
         placement: 'topRight',
       });
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  // Handle successful booking after payment
+  const handleBookingSuccess = (bookingResponse, paymentIntent) => {
+    notification.success({
+      message: 'Booking Successful',
+      description: 'Your booking has been confirmed and payment processed!',
+      placement: 'topRight',
+    });
+    
+    // Reset form
+    form.resetFields();
+    setBookingType(null);
+    setSelectedDateRange(null);
+    setSelectedSingleDate(null);
+    setSelectedServices({
+      shortTermStay: {
+        selected: null
+      },
+      longTermStay: {
+        selected: null
+      },
+      stallionsAccepted: false,
+      eventPricing: {
+        eventingCourse: false,
+        canterTrack: false,
+        jumpingTrack: false,
+        dressageTrack: false
+      }
+    });
+    
+    // Refresh availability data to show the new booking
+    if (selectedStable?.stableId) {
+      fetchBookingAvailability(selectedStable.stableId, selectedDateRange);
     }
   };
 
@@ -719,17 +751,27 @@ function BookingStablesContent() {
                 <Col xs={24} md={8}>
                   {bookingType && (
                     <Form.Item
-                      label="Select Date Range"
-                      name="dateRange"
-                      rules={[{ required: true, message: 'Please select a date range' }]}
+                      label={bookingType === 'day' ? "Select Date" : "Select Date Range"}
+                      name={bookingType === 'day' ? "singleDate" : "dateRange"}
+                      rules={[{ required: true, message: `Please select a ${bookingType === 'day' ? 'date' : 'date range'}` }]}
                     >
-                      <RangePicker
-                        style={{ width: '100%' }}
-                        size="large"
-                        onChange={handleDateRangeChange}
-                        disabledDate={(current) => current && current < dayjs().startOf('day')}
-                        placeholder={['Start Date', 'End Date']}
-                      />
+                      {bookingType === 'day' ? (
+                        <DatePicker
+                          style={{ width: '100%' }}
+                          size="large"
+                          onChange={handleSingleDateChange}
+                          disabledDate={(current) => current && current < dayjs().startOf('day')}
+                          placeholder="Select Date"
+                        />
+                      ) : (
+                        <RangePicker
+                          style={{ width: '100%' }}
+                          size="large"
+                          onChange={handleDateRangeChange}
+                          disabledDate={(current) => current && current < dayjs().startOf('day')}
+                          placeholder={['Start Date', 'End Date']}
+                        />
+                      )}
                     </Form.Item>
                   )}
                 </Col>
@@ -906,7 +948,7 @@ function BookingStablesContent() {
               )}
 
               {/* Price Display */}
-              {bookingType && selectedDateRange && (
+              {bookingType && ((bookingType === 'day' && selectedSingleDate) || (bookingType === 'week' && selectedDateRange)) && (
                 <div className="mb-4 p-4 bg-brand/5 rounded-lg border border-brand/20 mt-3">
                   <h4 className="font-semibold text-gray-800 mb-2">Booking Summary:</h4>
                   <div className="space-y-2">
@@ -915,9 +957,13 @@ function BookingStablesContent() {
                       <span className="font-medium capitalize">{bookingType}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Date Range:</span>
+                      <span className="text-gray-600">{bookingType === 'day' ? 'Date:' : 'Date Range:'}</span>
                       <span className="font-medium">
-                        {selectedDateRange[0].format('MMM DD')} - {selectedDateRange[1].format('MMM DD, YYYY')}
+                        {bookingType === 'day' && selectedSingleDate ? (
+                          selectedSingleDate.format('MMM DD, YYYY')
+                        ) : selectedDateRange && selectedDateRange.length === 2 ? (
+                          `${selectedDateRange[0].format('MMM DD')} - ${selectedDateRange[1].format('MMM DD, YYYY')}`
+                        ) : ''}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -1017,11 +1063,10 @@ function BookingStablesContent() {
                   type="primary"
                   htmlType="submit"
                   size="large"
-                  loading={loading}
                   className="w-full"
-                  disabled={!bookingType || !selectedDateRange}
+                  disabled={!bookingType || ((bookingType === 'day' && !selectedSingleDate) || (bookingType === 'week' && !selectedDateRange))}
                 >
-                  Book Stable (${getTotalBookingPrice()})
+                  Proceed to Payment (€{getTotalBookingPrice().toFixed(2)})
                 </Button>
               </Form.Item>
             </Form>
@@ -1029,6 +1074,14 @@ function BookingStablesContent() {
           </Col>
         </Row>
       </section>
+      
+      {/* Payment Modal */}
+      <BookingPaymentModal
+        visible={paymentModalVisible}
+        onCancel={() => setPaymentModalVisible(false)}
+        bookingData={bookingData}
+        onBookingSuccess={handleBookingSuccess}
+      />
     </div>
   );
 }

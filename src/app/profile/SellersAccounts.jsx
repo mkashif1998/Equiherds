@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getRequest, putRequest, deleteRequest } from "@/service";
-import { Edit, X, Save, User, Trash2 } from "lucide-react";
+import { Edit, X, Save, Trash2 } from "lucide-react";
 
 export default function SellersAccounts() {
   const [sellers, setSellers] = useState([]);
@@ -27,25 +27,31 @@ export default function SellersAccounts() {
       const res = await getRequest('/api/users');
       const sellersData = res.users || [];
       
-        // Filter only sellers and transform the data
-        const transformedSellers = sellersData
-          .filter(seller => seller.accountType === 'seller')
-          .map(seller => ({
-            id: seller._id,
-            _id: seller._id, // Keep original _id for API calls
-            firstName: seller.firstName || '',
-            lastName: seller.lastName || '',
-            email: seller.email || '',
-            phoneNumber: seller.phoneNumber || '',
-            companyName: seller.companyName || '',
-            companyInfo: seller.companyInfo || '',
-            accountType: seller.accountType || 'seller',
-            subscriptionStatus: seller.subscriptionStatus || 'Pending',
-            subscriptionExpiry: seller.subscriptionExpiry || '',
-            registrationDate: seller.createdAt || new Date().toISOString(),
-            status: seller.status || 'active'
-          }));
-      
+      // Filter only sellers and transform the data
+      const transformedSellers = sellersData
+        .filter(seller => seller.accountType === 'seller')
+        .map(seller => ({
+          id: seller._id,
+          _id: seller._id, // Keep original _id for API calls
+          firstName: seller.firstName || '',
+          lastName: seller.lastName || '',
+          email: seller.email || '',
+          phoneNumber: seller.phoneNumber || '',
+          companyName: seller.companyName || '',
+          companyInfo: seller.companyInfo || '',
+          accountType: seller.accountType || 'seller',
+          subscriptionStatus: seller.subscriptionStatus || 'Pending',
+          subscriptionExpiry: seller.subscriptionExpiry || '',
+          registrationDate: seller.createdAt || new Date().toISOString(),
+          status: seller.status || 'active',
+          // New fields for subscription details
+          numberOfStables: seller.numberOfStables || 0,
+          numberOfTrainers: seller.numberOfTrainers || 0,
+          numberOfHorses: seller.numberOfHorses || 0,
+          numberOfRiders: seller.numberOfRiders || 0,
+          subscriptionPlan: seller.subscriptionPlan || '',
+        }));
+    
       setSellers(transformedSellers);
     } catch (error) {
       console.error("Error loading sellers:", error);
@@ -181,84 +187,79 @@ export default function SellersAccounts() {
       </div>
 
       {/* Sellers Table */}
-      <div className="rounded border border-[color:var(--primary)] overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-[color:var(--primary)]/10 text-brand">
+      <div className="rounded border border-[color:var(--primary)] overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead className="bg-[color:var(--primary)]/10 text-brand">
+            <tr>
+              <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Seller</th>
+              <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Contact</th>
+              <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Subscription Plan</th>
+              <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Subscription Status</th>
+              <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">User Status</th>
+              <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Joined</th>
+              <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredSellers.length === 0 ? (
               <tr>
-                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Seller</th>
-                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Company</th>
-                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Contact</th>
-                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Subscription Status</th>
-                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">User Status</th>
-                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Joined</th>
-                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Actions</th>
+                <td colSpan="7" className="px-4 py-8 text-center text-brand/60">
+                  No sellers found
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {filteredSellers.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="px-4 py-8 text-center text-brand/60">
-                    No sellers found
+            ) : (
+              filteredSellers.map((seller) => (
+                <tr key={seller.id} className="border-t border-[color:var(--primary)]/20 hover:bg-gray-50">
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div>
+                      <div className="font-medium">{seller.firstName} {seller.lastName}</div>
+                      <div className="text-xs text-brand/60">{seller.email}</div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="text-xs text-brand/60">{seller.phoneNumber}</div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className="text-xs font-medium">{seller.subscriptionPlan || '-'}</span>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${getSubscriptionStatusColor(seller.subscriptionStatus)}`}>
+                      {seller.subscriptionStatus}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${getUserStatusColor(seller.status)}`}>
+                      {seller.status || 'active'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="text-xs text-brand/60">
+                      {new Date(seller.registrationDate).toLocaleDateString()}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEditSeller(seller)}
+                        className="p-1 text-green-600 hover:bg-green-100 rounded transition-colors"
+                        title="Edit Seller"
+                      >
+                        <Edit size={16} />
+                      </button>
+                      {/* <button
+                        onClick={() => handleDeleteSeller(seller)}
+                        className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
+                        title="Delete Seller"
+                      >
+                        <Trash2 size={16} />
+                      </button> */}
+                    </div>
                   </td>
                 </tr>
-              ) : (
-                filteredSellers.map((seller) => (
-                  <tr key={seller.id} className="border-t border-[color:var(--primary)]/20 hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div>
-                        <div className="font-medium">{seller.firstName} {seller.lastName}</div>
-                        <div className="text-xs text-brand/60">{seller.email}</div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div>
-                        <div className="font-medium">{seller.companyName}</div>
-                        <div className="text-xs text-brand/60 max-w-xs truncate">{seller.companyInfo}</div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-xs text-brand/60">{seller.phoneNumber}</div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getSubscriptionStatusColor(seller.subscriptionStatus)}`}>
-                        {seller.subscriptionStatus}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getUserStatusColor(seller.status)}`}>
-                        {seller.status || 'active'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-xs text-brand/60">
-                        {new Date(seller.registrationDate).toLocaleDateString()}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleEditSeller(seller)}
-                          className="p-1 text-green-600 hover:bg-green-100 rounded transition-colors"
-                          title="Edit Seller"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        {/* <button
-                          onClick={() => handleDeleteSeller(seller)}
-                          className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
-                          title="Delete Seller"
-                        >
-                          <Trash2 size={16} />
-                        </button> */}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
       {/* Edit Modal */}
@@ -313,6 +314,60 @@ export default function SellersAccounts() {
                     type="text"
                     value={editingSeller.phoneNumber || ''}
                     onChange={(e) => setEditingSeller({...editingSeller, phoneNumber: e.target.value})}
+                    className="w-full px-3 py-2 border border-[color:var(--primary)] rounded focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/40"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand/80 mb-1">Subscription Plan</label>
+                  <input
+                    type="text"
+                    value={editingSeller.subscriptionPlan || ''}
+                    onChange={(e) => setEditingSeller({...editingSeller, subscriptionPlan: e.target.value})}
+                    className="w-full px-3 py-2 border border-[color:var(--primary)] rounded focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/40"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand/80 mb-1">Number of Stables</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingSeller.numberOfStables || 0}
+                    onChange={(e) => setEditingSeller({...editingSeller, numberOfStables: Number(e.target.value)})}
+                    className="w-full px-3 py-2 border border-[color:var(--primary)] rounded focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/40"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand/80 mb-1">Number of Trainers</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingSeller.numberOfTrainers || 0}
+                    onChange={(e) => setEditingSeller({...editingSeller, numberOfTrainers: Number(e.target.value)})}
+                    className="w-full px-3 py-2 border border-[color:var(--primary)] rounded focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/40"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand/80 mb-1">Number of Horses</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingSeller.numberOfHorses || 0}
+                    onChange={(e) => setEditingSeller({...editingSeller, numberOfHorses: Number(e.target.value)})}
+                    className="w-full px-3 py-2 border border-[color:var(--primary)] rounded focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/40"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand/80 mb-1">Number of Riders</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingSeller.numberOfRiders || 0}
+                    onChange={(e) => setEditingSeller({...editingSeller, numberOfRiders: Number(e.target.value)})}
                     className="w-full px-3 py-2 border border-[color:var(--primary)] rounded focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)]/40"
                   />
                 </div>
