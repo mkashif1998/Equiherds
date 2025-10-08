@@ -70,6 +70,20 @@
  *                 type: string
  *               companyInfo:
  *                 type: string
+ *               companyLicence:
+ *                 type: string
+ *               street:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               country:
+ *                 type: string
+ *               zipcode:
+ *                 type: string
+ *               address1:
+ *                 type: string
+ *               address2:
+ *                 type: string
  *     responses:
  *       201:
  *         description: User created
@@ -111,6 +125,20 @@
  *               brandImage:
  *                 type: string
  *               companyInfo:
+ *                 type: string
+ *               companyLicence:
+ *                 type: string
+ *               street:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               country:
+ *                 type: string
+ *               zipcode:
+ *                 type: string
+ *               address1:
+ *                 type: string
+ *               address2:
  *                 type: string
  *               status:
  *                 type: string
@@ -273,6 +301,13 @@ export async function PUT(req) {
       companyName,
       brandImage,
       companyInfo,
+      companyLicence,
+      street,
+      city,
+      country,
+      zipcode,
+      address1,
+      address2,
       status,
       subscriptionStatus,
       subscriptionExpiry,
@@ -294,6 +329,13 @@ export async function PUT(req) {
     if (companyName !== undefined) updateData.companyName = companyName;
     if (brandImage !== undefined) updateData.brandImage = brandImage;
     if (companyInfo !== undefined) updateData.companyInfo = companyInfo;
+    if (companyLicence !== undefined) updateData.companyLicence = companyLicence;
+    if (street !== undefined) updateData.street = street;
+    if (city !== undefined) updateData.city = city;
+    if (country !== undefined) updateData.country = country;
+    if (zipcode !== undefined) updateData.zipcode = zipcode;
+    if (address1 !== undefined) updateData.address1 = address1;
+    if (address2 !== undefined) updateData.address2 = address2;
     if (status !== undefined) updateData.status = status;
     if (subscriptionStatus !== undefined) updateData.subscriptionStatus = subscriptionStatus;
     if (subscriptionExpiry !== undefined) updateData.subscriptionExpiry = subscriptionExpiry;

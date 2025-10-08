@@ -22,6 +22,13 @@ export default function LoginPage() {
   const [companyName, setCompanyName] = useState("");
   const [brandImage, setBrandImage] = useState(null);
   const [companyInfo, setCompanyInfo] = useState("");
+  const [companyLicence, setCompanyLicence] = useState(null);
+  const [street, setStreet] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
+  const [zipcode, setZipcode] = useState("");
+  const [address1, setAddress1] = useState("");
+  const [address2, setAddress2] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -47,6 +54,11 @@ export default function LoginPage() {
   function handleBrandImageChange(e) {
     const file = e.target.files?.[0] ?? null;
     setBrandImage(file);
+  }
+
+  function handleCompanyLicenceChange(e) {
+    const file = e.target.files?.[0] ?? null;
+    setCompanyLicence(file);
   }
 
   // OTP verification functions
@@ -145,6 +157,20 @@ export default function LoginPage() {
         }
       }
 
+      let companyLicenceUrl;
+      if (registrationData.isSeller && registrationData.companyLicence) {
+        if (typeof registrationData.companyLicence === 'string') {
+          companyLicenceUrl = registrationData.companyLicence;
+        } else {
+          try {
+            companyLicenceUrl = await uploadFile(registrationData.companyLicence);
+          } catch (err) {
+            toast.error(err?.message || "Company licence upload failed");
+            return;
+          }
+        }
+      }
+
       const payload = {
         firstName: registrationData.firstName,
         lastName: registrationData.lastName,
@@ -165,6 +191,27 @@ export default function LoginPage() {
       if (registrationData.isSeller && registrationData.companyInfo) {
         payload.companyInfo = registrationData.companyInfo;
       }
+      if (registrationData.isSeller && companyLicenceUrl) {
+        payload.companyLicence = companyLicenceUrl;
+      }
+      if (registrationData.street) {
+        payload.street = registrationData.street;
+      }
+      if (registrationData.city) {
+        payload.city = registrationData.city;
+      }
+      if (registrationData.country) {
+        payload.country = registrationData.country;
+      }
+      if (registrationData.zipcode) {
+        payload.zipcode = registrationData.zipcode;
+      }
+      if (registrationData.address1) {
+        payload.address1 = registrationData.address1;
+      }
+      if (registrationData.address2) {
+        payload.address2 = registrationData.address2;
+      }
       const res = await postRequest("/api/users", payload);
       if (res && res.user) {
         toast.success(res.message || "Account created successfully!");
@@ -178,6 +225,13 @@ export default function LoginPage() {
         setCompanyName("");
         setBrandImage(null);
         setCompanyInfo("");
+        setCompanyLicence(null);
+        setStreet("");
+        setCity("");
+        setCountry("");
+        setZipcode("");
+        setAddress1("");
+        setAddress2("");
         setPassword("");
         setConfirmPassword("");
       } else {
@@ -226,6 +280,13 @@ export default function LoginPage() {
       companyName,
       brandImage,
       companyInfo,
+      companyLicence,
+      street,
+      city,
+      country,
+      zipcode,
+      address1,
+      address2,
       password,
       isSeller,
     };
@@ -433,8 +494,88 @@ export default function LoginPage() {
                         required={isSeller}
                       />
                     </div>
+                    <div className="grid gap-1">
+                      <label className={labelClass} htmlFor="company-licence">Company licence</label>
+                      <input
+                        id="company-licence"
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        className="file:mr-4 file:rounded file:border-0 file:bg-primary file:text-black file:px-4 file:py-2 file:font-medium hover:file:opacity-90"
+                        onChange={handleCompanyLicenceChange}
+                      />
+                      {companyLicence && (
+                        <span className="text-xs text-green-700 break-all">{typeof companyLicence === 'string' ? companyLicence : companyLicence.name}</span>
+                      )}
+                    </div>
                   </div>
                 )}
+
+                {/* Address fields - available for all users */}
+                <div className="grid gap-4 p-4 rounded border border-white/10">
+                  <h3 className="text-lg font-medium text-brand">Address Information</h3>
+                  <div className="grid gap-1">
+                    <label className={labelClass} htmlFor="street">Street</label>
+                    <input
+                      id="street"
+                      className={inputClass}
+                      placeholder="123 Main Street"
+                      value={street}
+                      onChange={(e) => setStreet(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid gap-1">
+                      <label className={labelClass} htmlFor="city">City</label>
+                      <input
+                        id="city"
+                        className={inputClass}
+                        placeholder="New York"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-1">
+                      <label className={labelClass} htmlFor="zipcode">Zip code</label>
+                      <input
+                        id="zipcode"
+                        className={inputClass}
+                        placeholder="10001"
+                        value={zipcode}
+                        onChange={(e) => setZipcode(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-1">
+                    <label className={labelClass} htmlFor="country">Country</label>
+                    <input
+                      id="country"
+                      className={inputClass}
+                      placeholder="United States"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <label className={labelClass} htmlFor="address1">Address line 1</label>
+                    <input
+                      id="address1"
+                      className={inputClass}
+                      placeholder="Apartment, suite, unit, building, floor, etc."
+                      value={address1}
+                      onChange={(e) => setAddress1(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <label className={labelClass} htmlFor="address2">Address line 2</label>
+                    <input
+                      id="address2"
+                      className={inputClass}
+                      placeholder="Additional address information"
+                      value={address2}
+                      onChange={(e) => setAddress2(e.target.value)}
+                    />
+                  </div>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-1">
