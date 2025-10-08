@@ -2,59 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { getRequest } from "@/service";
+import EditSubscriptionModal from "../components/EditSubscriptionModal";
 
 export default function SubscriptionList() {
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedSubscription, setSelectedSubscription] = useState(null);
 
   useEffect(() => {
     async function loadSubscriptions() {
       try {
-        // This would be replaced with actual API call to get all subscriptions
-        // const res = await getRequest('/api/subscriptions');
-        // setSubscriptions(res.subscriptions || []);
-        
-        // Dummy data for now
-        const dummySubscriptions = [
-          {
-            id: 1,
-            userId: "user1",
-            userName: "John Doe",
-            userEmail: "john@example.com",
-            subscriptionType: "Premium",
-            status: "Active",
-            startDate: "2024-01-01",
-            endDate: "2024-12-31",
-            amount: 1200,
-            paymentStatus: "Paid"
-          },
-          {
-            id: 2,
-            userId: "user2", 
-            userName: "Jane Smith",
-            userEmail: "jane@example.com",
-            subscriptionType: "Basic",
-            status: "Expired",
-            startDate: "2023-06-01",
-            endDate: "2024-05-31",
-            amount: 600,
-            paymentStatus: "Paid"
-          },
-          {
-            id: 3,
-            userId: "user3",
-            userName: "Bob Johnson", 
-            userEmail: "bob@example.com",
-            subscriptionType: "Premium",
-            status: "Pending",
-            startDate: "2024-03-01",
-            endDate: "2025-02-28",
-            amount: 1200,
-            paymentStatus: "Pending"
-          }
-        ];
-        
-        setSubscriptions(dummySubscriptions);
+        const res = await getRequest('/api/subscriptions');
+        setSubscriptions(res.subscriptions || []);
       } catch (error) {
         console.error("Error loading subscriptions:", error);
       } finally {
@@ -91,6 +51,27 @@ export default function SubscriptionList() {
     }
   };
 
+  const handleEditSubscription = (subscription) => {
+    setSelectedSubscription(subscription);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSuccess = (updatedSubscription) => {
+    // Update the subscription in the list
+    setSubscriptions(prev => 
+      prev.map(sub => 
+        sub._id === updatedSubscription._id ? updatedSubscription : sub
+      )
+    );
+    setIsEditModalOpen(false);
+    setSelectedSubscription(null);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedSubscription(null);
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -102,70 +83,38 @@ export default function SubscriptionList() {
     );
   }
 
-  // Subscription plans data
-  const subscriptionPlans = [
-    {
-      id: 1,
-      name: "Basic",
-      price: 600,
-      period: "year",
-      description: "Perfect for individual horse owners",
+  // Transform API data to subscription plans format
+  const subscriptionPlans = subscriptions.map((subscription, index) => {
+    const colors = [
+      { color: "border-blue-200 bg-blue-50", buttonColor: "bg-blue-600 hover:bg-blue-700" },
+      { color: "border-green-200 bg-green-50", buttonColor: "bg-green-600 hover:bg-green-700" },
+      { color: "border-purple-200 bg-purple-50", buttonColor: "bg-purple-600 hover:bg-purple-700" }
+    ];
+    
+    const colorScheme = colors[index % colors.length];
+    
+    return {
+      id: subscription._id,
+      name: subscription.name,
+      price: subscription.price,
+      period: "days",
+      duration: subscription.duration,
+      description: `Duration: ${subscription.duration} days`,
       features: [
-        "Basic stable listing",
-        "Up to 5 horses",
-        "Standard support",
-        "Basic analytics",
-        "Email notifications"
+        `Horses: ${subscription.description["No of Hourse"] || "N/A"}`,
+        `Trainers: ${subscription.description["No of Trainer"] || "N/A"}`,
+        `Stables: ${subscription.description["No Stables"] || subscription.description["No of Syables"] || "N/A"}`
       ],
-      color: "border-blue-200 bg-blue-50",
-      buttonColor: "bg-blue-600 hover:bg-blue-700",
-      popular: false
-    },
-    {
-      id: 2,
-      name: "Standard",
-      price: 900,
-      period: "year",
-      description: "Ideal for small horse businesses",
-      features: [
-        "Enhanced stable listing",
-        "Up to 15 horses",
-        "Priority support",
-        "Advanced analytics",
-        "SMS notifications",
-        "Custom branding",
-        "Booking management"
-      ],
-      color: "border-green-200 bg-green-50",
-      buttonColor: "bg-green-600 hover:bg-green-700",
-      popular: true
-    },
-    {
-      id: 3,
-      name: "Premium",
-      price: 1200,
-      period: "year",
-      description: "Complete solution for large operations",
-      features: [
-        "Premium stable listing",
-        "Unlimited horses",
-        "24/7 premium support",
-        "Advanced analytics & reports",
-        "Multi-channel notifications",
-        "Full customization",
-        "Advanced booking system",
-        "API access",
-        "White-label options"
-      ],
-      color: "border-purple-200 bg-purple-50",
-      buttonColor: "bg-purple-600 hover:bg-purple-700",
-      popular: false
-    }
-  ];
+      ...colorScheme,
+      popular: index === 1 // Make the second plan popular
+    };
+  });
 
   return (
     <div className="space-y-8">
-      <h2 className="text-2xl font-semibold text-brand">Subscription Plans</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold text-brand">Subscription Plans</h2>
+      </div>
       
       {/* Subscription Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -183,6 +132,22 @@ export default function SubscriptionList() {
                 </span>
               </div>
             )}
+            
+            {/* Edit Icon */}
+            <button 
+              className="absolute top-4 right-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+              onClick={() => {
+                // Find the original subscription data
+                const originalSubscription = subscriptions.find(sub => sub._id === plan.id);
+                if (originalSubscription) {
+                  handleEditSubscription(originalSubscription);
+                }
+              }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
             
             <div className="text-center mb-6">
               <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
@@ -211,60 +176,64 @@ export default function SubscriptionList() {
         ))}
       </div>
 
-      <h2 className="text-2xl font-semibold text-brand">Current Subscriptions</h2>
+      <h2 className="text-2xl font-semibold text-brand">Available Subscription Plans</h2>
       
       <div className="rounded border border-[color:var(--primary)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-[color:var(--primary)]/10 text-brand">
               <tr>
-                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">User</th>
-                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Email</th>
-                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Subscription Type</th>
-                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Status</th>
-                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Start Date</th>
-                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">End Date</th>
-                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Amount</th>
-                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Payment Status</th>
+                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Plan Name</th>
+                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Price</th>
+                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Duration</th>
+                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Horses</th>
+                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Trainers</th>
+                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Stables</th>
+                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Users Count</th>
+                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Created Date</th>
+                <th className="px-4 py-3 border-b text-left text-brand/80 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
               {subscriptions.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-4 py-8 text-center text-brand/60">
-                    No subscriptions found
+                  <td colSpan="9" className="px-4 py-8 text-center text-brand/60">
+                    No subscription plans found
                   </td>
                 </tr>
               ) : (
                 subscriptions.map((subscription) => (
-                  <tr key={subscription.id} className="border-t border-[color:var(--primary)]/20 hover:bg-gray-50">
+                  <tr key={subscription._id} className="border-t border-[color:var(--primary)]/20 hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap font-medium">
-                      {subscription.userName}
+                      {subscription.name || 'N/A'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {subscription.userEmail}
+                      ${subscription.price ? subscription.price.toLocaleString("en-US", { minimumFractionDigits: 0 }) : '0'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {subscription.subscriptionType}
+                      {subscription.duration ? `${subscription.duration} days` : 'N/A'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(subscription.status)}`}>
-                        {subscription.status}
+                      {subscription.description["No of Hourse"] || 'N/A'}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {subscription.description["No of Trainer"] || 'N/A'}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {subscription.description["No Stables"] || subscription.description["No of Syables"] || 'N/A'}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {subscription.userCount || 0} users
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {new Date(subscription.startDate).toLocaleDateString()}
+                      {subscription.createdAt ? new Date(subscription.createdAt).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {new Date(subscription.endDate).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      ${subscription.amount.toLocaleString("en-US", { minimumFractionDigits: 0 })}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getPaymentStatusColor(subscription.paymentStatus)}`}>
-                        {subscription.paymentStatus}
-                      </span>
+                      <button className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors">
+                        Select Plan
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -273,6 +242,14 @@ export default function SubscriptionList() {
           </table>
         </div>
       </div>
+
+      {/* Edit Subscription Modal */}
+      <EditSubscriptionModal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEditModal}
+        onSuccess={handleEditSuccess}
+        subscriptionData={selectedSubscription}
+      />
     </div>
   );
 }

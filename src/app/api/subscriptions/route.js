@@ -44,6 +44,9 @@
  *               duration:
  *                 type: number
  *                 example: 30
+ *               description:
+ *                 type: object
+ *                 example: {"total horses": 5, "quantity": 5}
  *     responses:
  *       201:
  *         description: Subscription created successfully
@@ -61,6 +64,7 @@
 
 import connectDB from "@/lib/db";
 import Subscription from "@/models/Subscription";
+import User from "@/models/User";
 import { NextResponse } from "next/server";
 
 async function parseRequestBody(req) {
@@ -91,8 +95,24 @@ export async function GET(req) {
   await connectDB();
   try {
     const subscriptions = await Subscription.find();
+    
+    // Get user counts for each subscription plan
+    const subscriptionsWithUserCount = await Promise.all(
+      subscriptions.map(async (subscription) => {
+        // Count users who have this subscription in their payments
+        const userCount = await User.countDocuments({
+          'payments.subscriptionId': subscription._id
+        });
+        
+        return {
+          ...subscription.toObject(),
+          userCount
+        };
+      })
+    );
+    
     return NextResponse.json(
-      { message: "Subscriptions fetched successfully", subscriptions },
+      { message: "Subscriptions fetched successfully", subscriptions: subscriptionsWithUserCount },
       { status: 200 }
     );
   } catch (error) {
@@ -136,6 +156,14 @@ export async function POST(req) {
     if (body.discount && (typeof body.discount !== "number" || body.discount < 0)) {
       return NextResponse.json(
         { message: "Discount must be a positive number" },
+        { status: 400 }
+      );
+    }
+    
+    // Validate description if provided
+    if (body.description && typeof body.description !== "object") {
+      return NextResponse.json(
+        { message: "Description must be a valid JSON object" },
         { status: 400 }
       );
     }

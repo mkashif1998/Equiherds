@@ -59,6 +59,9 @@
  *               duration:
  *                 type: number
  *                 example: 60
+ *               description:
+ *                 type: object
+ *                 example: {"No of Hourse": "10", "No of Trainer": "5", "No Stables": "3"}
  *     responses:
  *       200:
  *         description: Subscription updated successfully
@@ -158,7 +161,7 @@ export async function PUT(req, { params }) {
   try {
     const { id } = params;
     const body = await parseRequestBody(req);
-    const { name, price, discount, duration } = body;
+    const { name, price, discount, duration, description } = body;
 
     if (!id) {
       return NextResponse.json({ message: "Missing subscription id" }, { status: 400 });
@@ -186,11 +189,20 @@ export async function PUT(req, { params }) {
       );
     }
 
+    // Validate description if provided
+    if (description !== undefined && typeof description !== "object") {
+      return NextResponse.json(
+        { message: "Description must be an object" },
+        { status: 400 }
+      );
+    }
+
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (price !== undefined) updateData.price = price;
     if (discount !== undefined) updateData.discount = discount;
     if (duration !== undefined) updateData.duration = duration;
+    if (description !== undefined) updateData.description = description;
 
     const subscription = await Subscription.findByIdAndUpdate(id, updateData, { new: true });
     
