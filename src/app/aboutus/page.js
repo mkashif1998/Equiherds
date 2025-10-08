@@ -147,35 +147,37 @@ export default function AboutPage() {
               Dedicated professionals passionate about equestrian excellence
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <div className="text-center">
-              <div className="w-32 h-32 bg-gradient-to-br from-brand to-green-600 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <span className="text-white text-2xl font-bold">MK</span>
+              <div className="w-32 h-32 rounded-full mx-auto mb-4 overflow-hidden">
+                <Image
+                  src="/bob.jpeg"
+                  alt="Bob"
+                  width={128}
+                  height={128}
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <h4 className="text-xl font-semibold text-gray-800 mb-2">Muhammad Kashif</h4>
-              <p className="text-brand font-medium mb-2">Founder & CEO</p>
+              <h4 className="text-xl font-semibold text-gray-800 mb-2">Bob</h4>
+              <p className="text-brand font-medium mb-2">Founding Partner</p>
               <p className="text-gray-600 text-sm">
-                Passionate about revolutionizing the equestrian industry through technology
+                Co-founder with extensive experience in equestrian business development
               </p>
             </div>
             <div className="text-center">
-              <div className="w-32 h-32 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <span className="text-white text-2xl font-bold">JS</span>
+              <div className="w-32 h-32 rounded-full mx-auto mb-4 overflow-hidden">
+                <Image
+                  src="/zubair.jpeg"
+                  alt="Zubair"
+                  width={128}
+                  height={128}
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <h4 className="text-xl font-semibold text-gray-800 mb-2">John Smith</h4>
-              <p className="text-brand font-medium mb-2">Head of Operations</p>
+              <h4 className="text-xl font-semibold text-gray-800 mb-2">Zubair</h4>
+              <p className="text-brand font-medium mb-2">Founding Partner</p>
               <p className="text-gray-600 text-sm">
-                Expert in stable management with 15+ years of equestrian experience
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-32 h-32 bg-gradient-to-br from-green-500 to-teal-600 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <span className="text-white text-2xl font-bold">SW</span>
-              </div>
-              <h4 className="text-xl font-semibold text-gray-800 mb-2">Sarah Wilson</h4>
-              <p className="text-brand font-medium mb-2">Customer Success Manager</p>
-              <p className="text-gray-600 text-sm">
-                Dedicated to ensuring exceptional customer experiences
+                Co-founder dedicated to building lasting partnerships in the equestrian community
               </p>
             </div>
           </div>

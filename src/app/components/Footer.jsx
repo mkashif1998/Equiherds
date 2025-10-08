@@ -21,7 +21,7 @@ export default function Footer() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 text-[15px]">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <Image src="/logo2.png" className="" alt="Logo" width={130} height={130} />
+            <Image src="/logo2.png" className="" alt="Logo" width={150} height={150} />
             <p className="opacity-70 leading-relaxed max-w-xs">Building modern herd management experiences with care and technology.</p>
           </div>
 
@@ -48,7 +48,6 @@ export default function Footer() {
             <ul className="space-y-3">
               {[
                 { href: "/services", label: "All Services" },
-                { href: "/services/consulting", label: "Consulting" },
                 { href: "/services/support", label: "Support" },
               ].map(({ href, label }) => {
                 const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -78,9 +77,12 @@ export default function Footer() {
 
         <div className="flex items-center justify-between flex-col sm:flex-row gap-3 pt-8 mt-8 border-t border-white/10">
           <p className="opacity-70 text-center sm:text-left">© {new Date().getFullYear()} EquiHerds. All rights reserved.</p>
-          <div className="flex items-center gap-4">
-            <Link href="#privacy" className="hover:underline underline-offset-4 text-white/80 hover:[color:var(--secondary)]">Privacy</Link>
-            <Link href="#terms" className="hover:underline underline-offset-4 text-white/80 hover:[color:var(--secondary)]">Terms</Link>
+          <div className="flex items-center gap-4 flex-wrap">
+            <Link href="/legal" className="hover:underline underline-offset-4 text-white hover:[color:var(--secondary)]">Legal</Link>
+            <Link href="/imprint" className="hover:underline underline-offset-4 text-white hover:[color:var(--secondary)]">Imprint</Link>
+            <Link href="/data-privacy" className="hover:underline underline-offset-4 text-white hover:[color:var(--secondary)]">Data Privacy</Link>
+            <Link href="/right-of-withdrawal" className="hover:underline underline-offset-4 text-white hover:[color:var(--secondary)]">Right of Withdrawal</Link>
+            <Link href="/terms-and-conditions" className="hover:underline underline-offset-4 text-white hover:[color:var(--secondary)]">Terms and Conditions</Link>
           </div>
         </div>
       </div>

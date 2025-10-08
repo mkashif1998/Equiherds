@@ -120,7 +120,7 @@ export default function Navbar() {
             className="flex items-center"
             onClick={(e) => handleNavigation("/", e)}
           >
-            <Image src="/logo2.png" alt="Logo" width={120} height={120} />
+            <Image src="/logo2.png" alt="Logo" width={138} height={138} />
           </Link>
         </div>
 
@@ -212,7 +212,7 @@ export default function Navbar() {
         >
           <div className="px-4 py-3 flex items-center justify-between border-b border-white/10">
             <Link href="/" className="flex items-center gap-2 gap-2" onClick={(e) => { setOpen(false); handleNavigation("/", e); }}>
-              <Image src="/logo2.png" alt="Logo" width={110} height={110} />
+              <Image src="/logo2.png" alt="Logo" width={127} height={127} />
             </Link>
             <button aria-label="Close menu" className="p-2 rounded hover:bg-white/10 text-white" onClick={() => setOpen(false)}>
               <X size={20} />
